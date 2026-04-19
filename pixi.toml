@@ -1,0 +1,36 @@
+[workspace]
+name = "alphagateau-breakthrough"
+version = "0.1.0"
+description = "AlphaGateau-style Breakthrough training, evaluation, and submission pipeline."
+channels = ["conda-forge"]
+platforms = ["win-64", "linux-64"]
+
+[dependencies]
+python = "3.11.*"
+pip = "*"
+tectonic = "*"
+
+[pypi-dependencies]
+jax = ">=0.4.25"
+jaxlib = ">=0.4.25"
+chex = ">=0.1.85"
+flax = ">=0.8.1"
+optax = ">=0.1.9"
+jraph = ">=0.0.6.dev0"
+mctx = ">=0.0.5"
+numpy = ">=1.26"
+scipy = ">=1.11"
+packaging = ">=24.0"
+matplotlib = ">=3.8"
+rich = ">=13.7"
+pytest = ">=8.0"
+
+[tasks]
+runtime-info = "python scripts/show_runtime_info.py"
+test = "pytest -q -s tests"
+smoke = "python scripts/run_smoke_suite.py"
+train-gnn-8 = "python scripts/train_experiment.py gnn_8x8_scratch"
+train-gnn-5 = "python scripts/train_experiment.py gnn_5x5_pretrain"
+train-cnn-8 = "python scripts/train_experiment.py cnn_8x8_scratch"
+transfer = "python scripts/run_transfer_pipeline.py"
+paper = "tectonic --keep-logs --keep-intermediates report/paper.tex"
