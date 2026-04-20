@@ -15,7 +15,7 @@ def main() -> None:
     parser.add_argument("checkpoint_b")
     parser.add_argument("--n-games", type=int, default=12)
     parser.add_argument("--n-sim", type=int, default=32)
-    parser.add_argument("--max-plies", type=int, default=192)
+    parser.add_argument("--max-plies", type=int, default=256)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--output", default=None)
     args = parser.parse_args()

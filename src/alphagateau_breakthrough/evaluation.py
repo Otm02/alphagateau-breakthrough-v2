@@ -170,7 +170,7 @@ def evaluate_checkpoint_pair(
     *,
     n_games: int = 12,
     n_sim: int = 32,
-    max_plies: int = 192,
+    max_plies: int = 256,
     seed: int = 0,
     output_path: str | Path | None = None,
 ) -> dict:
@@ -252,7 +252,7 @@ def run_tournament(
     *,
     n_games: int = 12,
     n_sim: int = 32,
-    max_plies: int = 192,
+    max_plies: int = 256,
     seed: int = 0,
     output_dir: str | Path = "artifacts/tournament",
 ) -> dict:

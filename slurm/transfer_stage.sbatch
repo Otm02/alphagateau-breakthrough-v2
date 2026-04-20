@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=all
-#SBATCH --account=winter2026-comp579
-#SBATCH --qos=comp579-1gpu-12h
+# Set SLURM_ACCOUNT and SLURM_QOS in your environment or pass --account / --qos to sbatch.
+# Example for McGill COMP-579: --account=winter2026-comp579 --qos=comp579-1gpu-12h
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
 #SBATCH --time=12:00:00
@@ -13,16 +13,18 @@ set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:?set REPO_ROOT to the cloned repository path on mimi}"
 ENV_NAME="${ENV_NAME:-comp579-breakthrough}"
+ENV_PREFIX="${ENV_PREFIX:-}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-artifacts/experiments}"
+LOGS_DIR="${LOGS_DIR:-$REPO_ROOT/logs/slurm}"
 RESUME="${RESUME:-1}"
 
-mkdir -p "$REPO_ROOT/logs/slurm"
+mkdir -p "$LOGS_DIR"
 cd "$REPO_ROOT"
 
-module load anaconda
-module load cuda/11.8
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate "$ENV_NAME"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/scripts/bootstrap_mimi_shell.sh"
+bootstrap_mimi_shell
+activate_conda_target
 
 cmd=(python scripts/run_transfer_pipeline.py --output-root "$OUTPUT_ROOT")
 

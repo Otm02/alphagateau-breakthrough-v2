@@ -13,7 +13,7 @@ class TrainConfig:
     learning_rate: float = 1e-3
     num_iterations: int = 40
     selfplay_games: int = 64
-    max_plies: int = 192
+    max_plies: int = 256
     num_simulations: int = 32
     replay_window: int = 50_000
     batch_size: int = 32
@@ -41,7 +41,7 @@ EXPERIMENT_PRESETS = {
         board_size=8,
         model_type="gnn",
         selfplay_games=64,
-        max_plies=192,
+        max_plies=256,
         num_iterations=40,
     ),
     "gnn_5x5_pretrain": TrainConfig(
@@ -57,7 +57,7 @@ EXPERIMENT_PRESETS = {
         board_size=8,
         model_type="gnn",
         selfplay_games=64,
-        max_plies=192,
+        max_plies=256,
         num_iterations=30,
     ),
     "cnn_8x8_scratch": TrainConfig(
@@ -65,7 +65,7 @@ EXPERIMENT_PRESETS = {
         board_size=8,
         model_type="cnn",
         selfplay_games=64,
-        max_plies=192,
+        max_plies=256,
         num_iterations=40,
     ),
 }

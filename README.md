@@ -1,158 +1,122 @@
-# AlphaGateau Breakthrough
+# AlphaGateau for Breakthrough
 
-This repository adapts the AlphaGateau idea from the original chess codebase to **Breakthrough**, with a board-size-invariant graph model, a simpler AlphaZero-style CNN baseline, self-play training, MCTS evaluation, Elo aggregation, automated figure generation, a short paper draft, and a 6-slide presentation package.
+This repository adapts the AlphaGateau idea from chess to the abstract strategy game
+**Breakthrough**. It contains a board-size-invariant GNN, an AlphaZero-style CNN baseline,
+a full self-play training pipeline, cross-board transfer experiments, automated figure
+generation, and the project paper and presentation.
 
-`AlphaGateau-master/` is kept as an upstream reference only. The submission-ready code lives under `src/alphagateau_breakthrough/`.
+## Quick start
 
-## Repository Layout
-
-- `src/alphagateau_breakthrough/`: Breakthrough environment, graph encoder, models, MCTS, training, evaluation, Elo, and plotting.
-- `scripts/`: CLI entrypoints for training, transfer, postprocessing, smoke validation, and McGill `mimi` environment/Slurm submission.
-- `slurm/`: committed `sbatch` workers for single-experiment training, transfer, and postprocessing.
-- `tests/`: unit tests and a tiny end-to-end smoke test.
-- `report/`: project paper draft and figure output directory.
-- `presentation/`: 6-slide presentation script and speaker notes.
-
-## Setup
-
-The code is written for Python `3.10+`.
-
-For the **full course experiments**, the canonical path is now the McGill CS department GPU allocation on `mimi.cs.mcgill.ca` via Slurm.
-
-Use local Pixi or a local virtualenv for:
-
-- tests
-- smoke runs
-- figure generation from existing artifacts
-- report compilation
+**No Slurm? Any Linux GPU or notebook works:**
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
+git clone <repo-url>
+cd alphagateau-breakthrough-v2
+pip install -e ".[cuda12]"        # or cuda13, or just . for CPU
+python scripts/show_runtime_info.py
+python scripts/run_smoke_suite.py  # 1-iter sanity check, writes figures
 ```
 
-The default dependency specs are **CPU-safe**. If you want GPU acceleration on Linux/WSL2, follow [RUN_GUIDE.md](RUN_GUIDE.md) and install exactly one official JAX CUDA extra inside the environment, such as `jax[cuda13]` or `jax[cuda12]`. Do not mix multiple CUDA extras in the same environment.
-
-If you prefer Pixi, the repo now includes a root [pixi.toml](pixi.toml). The shortest setup path is:
+**On McGill mimi with the shared team environment:**
 
 ```bash
-pixi install
-pixi run runtime-info
-pixi run test
+bash scripts/mimi_collect_outputs.sh   # pull existing results
+bash scripts/mimi_full_dag.sh          # submit the full pipeline
 ```
 
-For the full operator guide, including the canonical **McGill Slurm** workflow and local validation commands, see [RUN_GUIDE.md](RUN_GUIDE.md).
+See [RUN_GUIDE.md](RUN_GUIDE.md) for all three supported paths (standalone GPU, personal Slurm
+env, shared team Slurm env).
 
-## Core Commands
+## Repository layout
 
-Run the local smoke suite:
-
-```bash
-python3 scripts/run_smoke_suite.py
+```
+src/alphagateau_breakthrough/   Core library (env, graph, models, training, eval, plotting)
+scripts/                        Training CLIs + Slurm submission + mimi wrappers
+slurm/                          sbatch job templates
+tests/                          Unit tests and end-to-end smoke tests
+report/                         Paper (paper.tex / paper.md / paper.pdf) and figures
+presentation/                   Slides and speaker notes
+notebooks/                      Standalone GPU demo notebook
 ```
 
-Prepare the `mimi` environment once on the login node:
+## Experiments
+
+Four presets, all designed to run on a single GPU:
+
+| Preset | Board | Model | Iterations |
+|---|---|---|---|
+| `gnn_8x8_scratch` | 8×8 | GNN | 40 |
+| `cnn_8x8_scratch` | 8×8 | CNN | 40 |
+| `gnn_5x5_pretrain` | 5×5 | GNN | 40 |
+| `gnn_8x8_finetune` | 8×8 | GNN (from 5×5 ckpt) | 30 |
+
+Shared hyperparameters: hidden size 64, 4 residual layers, 32 MCTS simulations, 50k replay
+window, batch 32, LR 1e-3.
+
+Train a single preset (supports `--resume` for interrupted runs):
 
 ```bash
-bash scripts/setup_mimi_env.sh
+python scripts/train_experiment.py gnn_8x8_scratch --resume
 ```
 
-Inspect the Slurm DAG without submitting anything:
+Run the 5×5 → 8×8 transfer curriculum:
 
 ```bash
-python3 scripts/submit_mimi_pipeline.py --dry-run
-```
-
-Submit a tiny cluster smoke DAG before the full run:
-
-```bash
-python3 scripts/submit_mimi_pipeline.py \
-  --max-attempts 1 \
-  --num-iterations 1 \
-  --selfplay-games 2 \
-  --num-simulations 2 \
-  --max-plies-5x5 8 \
-  --max-plies-8x8 8 \
-  --eval-games 2 \
-  --head-to-head-games 2 \
-  --head-to-head-simulations 2 \
-  --head-to-head-max-plies 8
-```
-
-Submit the full course DAG on `mimi`:
-
-```bash
-python3 scripts/submit_mimi_pipeline.py
-```
-
-Train one preset directly, with resume support:
-
-```bash
-python3 scripts/train_experiment.py gnn_8x8_scratch --resume
-```
-
-Run the transfer curriculum from an existing 5x5 checkpoint:
-
-```bash
-python3 scripts/run_transfer_pipeline.py \
+python scripts/run_transfer_pipeline.py \
   --pretrained-checkpoint artifacts/experiments/gnn_5x5_pretrain/checkpoints/final.pkl \
   --resume
 ```
 
-Postprocess completed experiment directories into the headline comparison and report figures:
+Postprocess and regenerate report figures:
 
 ```bash
-python3 scripts/postprocess_experiments.py \
-  --gnn-scratch-dir artifacts/experiments/gnn_8x8_scratch \
-  --cnn-scratch-dir artifacts/experiments/cnn_8x8_scratch \
-  --pretrain-dir artifacts/experiments/gnn_5x5_pretrain \
-  --finetune-dir artifacts/experiments/gnn_8x8_finetune \
+python scripts/postprocess_experiments.py \
+  --gnn-scratch-dir  artifacts/experiments/gnn_8x8_scratch \
+  --cnn-scratch-dir  artifacts/experiments/cnn_8x8_scratch \
+  --pretrain-dir     artifacts/experiments/gnn_5x5_pretrain \
+  --finetune-dir     artifacts/experiments/gnn_8x8_finetune \
   --transfer-summary artifacts/experiments/gnn_transfer_summary.json \
   --transfer-zero-shot artifacts/experiments/gnn_transfer_zero_shot.json
 ```
 
-Run the tests:
+## Tests
 
 ```bash
 pytest -q -s tests
 ```
 
-## Experiment Design
+## Pixi (optional)
 
-The repository ships the four course-facing presets from the plan:
+If you have [Pixi](https://pixi.sh) installed, a single command sets up the full environment
+and runs the tests:
 
-- `gnn_8x8_scratch`
-- `gnn_5x5_pretrain`
-- `gnn_8x8_finetune`
-- `cnn_8x8_scratch`
+```bash
+pixi run test
+pixi run smoke
+pixi run paper     # compile report/paper.pdf with tectonic
+```
 
-The default preset values are the course-feasible schedules from the project plan:
+Available tasks: `runtime-info`, `test`, `smoke`, `train-gnn-8`, `train-gnn-5`, `train-cnn-8`,
+`transfer`, `paper`.
 
-- hidden size `64`
-- `4` residual blocks/layers
-- `32` MCTS simulations
-- replay window `50k`
-- batch size `32`
-- checkpoint/eval every `5` iterations
-- `128` self-play games and `96` max plies on `5x5`
-- `64` self-play games and `192` max plies on `8x8`
+## Key design notes
 
-## Implementation Notes
+- **Action encoding**: `from_square × 3 + move_type` where `move_type ∈ {forward, diag_left,
+  diag_right}` in the current player's canonical perspective.
+- **Board-size invariance**: the GNN uses the same node and edge feature schema on 5×5 and 8×8,
+  enabling direct cross-board transfer without any parameter shape changes.
+- **Resume support**: training writes `latest_resume.pkl` at every checkpoint, capturing model
+  params, optimizer state, replay buffer, RNG state, and accumulated metrics. Any run can be
+  resumed after an interruption or cluster timeout.
+- **Slurm**: the sbatch templates do not hardcode account or QoS. Pass `--account` / `--qos` to
+  `submit_mimi_pipeline.py`, or set `SLURM_ACCOUNT` / `SLURM_QOS` when using the mimi wrappers.
 
-- The Breakthrough action space is `from_square * 3 + move_type`, with move types `{forward, diag_left, diag_right}` in the **current player's canonical perspective**.
-- The graph model uses fixed node and edge feature schemas so the same GNN checkpoint can be trained on `5x5`, evaluated zero-shot on `8x8`, and then fine-tuned on `8x8` without any parameter shape changes.
-- The CNN baseline is restricted to `8x8`, matching the project plan’s “simpler AlphaZero-style baseline” replacement for the originally proposed TD baseline.
-- Training outputs are written to `artifacts/experiments/<run_name>/` with checkpoints, metrics, evaluation summaries, representative move logs, `latest_resume.pkl`, `status.json`, and `summary.json`.
-- The Slurm workers target the TA-recommended department configuration: `partition=all`, `account=winter2026-comp579`, `qos=comp579-1gpu-12h`, `gres=gpu:1`, `mem=16G`, with logs under `logs/slurm/`.
-- Resume state includes model parameters, optimizer state, replay buffer contents, RNG state, and accumulated metric rows so long runs can survive the 12-hour QoS boundary.
+## Submission assets
 
-## Submission Assets
-
-- Paper draft: [report/paper.md](report/paper.md)
-- Paper LaTeX source: [report/paper.tex](report/paper.tex)
-- Presentation slides: [presentation/slides.md](presentation/slides.md)
-- Speaker notes: [presentation/speaker_notes.md](presentation/speaker_notes.md)
-
-The report and slide deck are written around the exact experiment and figure pipeline implemented in this repo. Long runs are configured in the presets; the smoke suite exists to validate the pipeline quickly on CPU-only environments.
+| File | Description |
+|---|---|
+| [report/paper.pdf](report/paper.pdf) | Compiled project paper |
+| [report/paper.tex](report/paper.tex) | LaTeX source |
+| [report/paper.md](report/paper.md) | Markdown draft |
+| [presentation/slides.md](presentation/slides.md) | 7-slide presentation script |
+| [presentation/speaker_notes.md](presentation/speaker_notes.md) | Speaker notes |

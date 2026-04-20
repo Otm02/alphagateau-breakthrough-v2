@@ -84,7 +84,7 @@ def main() -> None:
         params={"params": pretrain_payload["params"], "batch_stats": pretrain_payload["batch_stats"]},
         n_games=args.eval_games,
         n_sim=args.num_simulations or 32,
-        max_plies=args.max_plies_8x8 or 192,
+        max_plies=args.max_plies_8x8 or 256,
         seed=pretrain_payload["iteration"],
         log_path=Path(args.output_root) / "gnn_transfer_zero_shot_moves.txt",
     )

@@ -40,7 +40,7 @@ def main() -> None:
     parser.add_argument("--output-dir", default="report/figures")
     parser.add_argument("--n-games", type=int, default=12)
     parser.add_argument("--n-sim", type=int, default=32)
-    parser.add_argument("--max-plies", type=int, default=192)
+    parser.add_argument("--max-plies", type=int, default=256)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
@@ -55,8 +55,11 @@ def main() -> None:
     )
     generate_submission_figures(
         gnn_scratch_dir=args.gnn_scratch_dir,
+        cnn_scratch_dir=args.cnn_scratch_dir,
         pretrain_dir=args.pretrain_dir,
         finetune_dir=args.finetune_dir,
+        transfer_zero_shot_path=args.transfer_zero_shot,
+        transfer_summary_path=args.transfer_summary,
         output_dir=args.output_dir,
     )
     summary = {

@@ -52,6 +52,7 @@ def main() -> None:
     )
     generate_submission_figures(
         gnn_scratch_dir=output_root / "gnn_8x8_scratch",
+        cnn_scratch_dir=output_root / "cnn_8x8_scratch",
         pretrain_dir=output_root / "gnn_5x5_pretrain",
         finetune_dir=output_root / "gnn_8x8_finetune",
         output_dir="report/figures",

@@ -218,5 +218,13 @@ logs/
 # Local report build outputs
 report/*.aux
 report/*.log
+report/*.out
 report/*.pdf
 report/*.xdv
+
+# Generated figure subdirectories (smoke/validation runs)
+report/smoke_figures/
+report/full_wrapper_*/
+
+# Claude Code local settings
+.claude/

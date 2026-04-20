@@ -1,24 +1,11 @@
-# Notebook Workflow
+# Notebooks
 
-Use this folder as the home for ad hoc cloud-notebook experiments.
+## [demo.ipynb](demo.ipynb)
 
-The recommended workflow is:
+A self-contained notebook that runs the full experiment pipeline on any Linux GPU
+(Google Colab, Kaggle, Lambda Labs, local machine) — no Slurm required.
 
-1. Start a Linux GPU notebook.
-2. Bring the repository into the runtime.
-3. Install dependencies.
-4. Run `python scripts/show_runtime_info.py`.
-5. Run `python scripts/run_smoke_suite.py`.
-6. Launch the long training jobs from notebook cells.
+Covers install, GPU verification, smoke test, full training with resume support,
+postprocessing, inline figure display, and paper compilation.
 
-Minimal notebook bootstrap:
-
-```python
-!python -m pip install --upgrade pip
-!python -m pip install -r requirements.txt
-!python scripts/show_runtime_info.py
-!pytest -q -s tests/test_env.py tests/test_graph.py
-!python scripts/run_smoke_suite.py
-```
-
-For the full cloud workflow, follow [RUN_GUIDE.md](../RUN_GUIDE.md).
+For the Slurm-based workflow see [../RUN_GUIDE.md](../RUN_GUIDE.md).
