@@ -80,7 +80,7 @@ Breakthrough~\cite{breakthrough} is especially attractive for this idea because 
 rules apply on 5$\times$5 and 8$\times$8 boards.
 A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
 A graph encoder can keep the same feature schema and architecture while only changing the number
-of nodes and edges.
+of nodes and edges. It has be solved for 6x6 \cite{jonsson2025solving}
 
 \section{Methodology}
 
@@ -272,6 +272,9 @@ Andrew Saffar focused on the graph encoding, evaluation tooling, and write-up su
 \textbf{Acknowledgements.}
 We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
 Optax, Jraph, MCTX, and the McGill department GPU infrastructure on \texttt{mimi.cs.mcgill.ca}.
+
+\bibliographystyle{plain} % Defines the style
+\bibliography{references}  % Points to references.bib
 
 \begin{thebibliography}{9}
 
