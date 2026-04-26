@@ -88,6 +88,24 @@ def play_game(
             action = _select_model_action(env, model, params, state, subkey, n_sim)
         elif agent_type == "greedy":
             action = greedy_action(state, env.board_size)
+        elif agent_type == "td":
+            model, params = agent_payload
+            legal_moves = np.where(np.array(state.legal_action_mask))[0]
+            best_action, best_val = None, float("-inf")
+            for action in legal_moves:
+                next_state = env.step(state, jnp.int32(action))
+                obs = model.format_data(state=next_state)
+                _, val = model(
+                    obs,
+                    next_state.legal_action_mask[jnp.newaxis],
+                    params=params,
+                )
+                val = float(val[0])
+                if next_state.current_player != state.current_player:
+                    val = -val
+                if val > best_val:
+                    best_val, best_action = val, action
+            action = int(best_action)
         else:
             legal = np.where(np.array(state.legal_action_mask))[0]
             if legal.size == 0:
@@ -163,6 +181,55 @@ def evaluate_against_greedy(
         "loss_rate": losses / total,
     }
 
+def evaluate_td_against_greedy(
+    *,
+    env: BreakthroughEnv,
+    model,
+    params,
+    n_games: int,
+    max_plies: int,
+    seed: int,
+    log_path: str | Path | None = None,
+) -> dict:
+    wins = draws = losses = 0
+    sample_log = None
+    for game_id in range(n_games):
+        if game_id % 2 == 0:
+            player0 = ("td", (model, params))
+            player1 = ("greedy", None)
+        else:
+            player0 = ("greedy", None)
+            player1 = ("td", (model, params))
+        summary = play_game(
+            env=env,
+            player0=player0,
+            player1=player1,
+            max_plies=max_plies,
+            seed=seed + game_id,
+            log_path=None,
+        )
+        result = summary["result"] if game_id % 2 == 0 else -summary["result"]
+        if result == 1:
+            wins += 1
+        elif result == -1:
+            losses += 1
+        else:
+            draws += 1
+        if sample_log is None:
+            sample_log = summary["moves"]
+    if log_path is not None and sample_log is not None:
+        Path(log_path).parent.mkdir(parents=True, exist_ok=True)
+        with Path(log_path).open("w", encoding="utf-8") as file:
+            file.write("\n".join(sample_log))
+    total = max(1, n_games)
+    return {
+        "wins": wins,
+        "draws": draws,
+        "losses": losses,
+        "win_rate": wins / total,
+        "draw_rate": draws / total,
+        "loss_rate": losses / total,
+    }
 
 def evaluate_checkpoint_pair(
     checkpoint_a: str | Path,
@@ -179,41 +246,55 @@ def evaluate_checkpoint_pair(
     config_a = payload_a["config"]
     config_b = payload_b["config"]
     env = BreakthroughEnv(8)
+    gnn_cnn_kwargs = {}
+    if config_a["model_type"] in ("gnn", "cnn"):
+        gnn_cnn_kwargs = dict(
+            attention_pooling=config_a.get("attention_pooling", True),
+            mix_edge_node=config_a.get("mix_edge_node", False),
+            add_features=config_a.get("add_features", True),
+            self_edges=config_a.get("self_edges", True),
+            simple_update=config_a.get("simple_update", True),
+            sync_updates=config_a.get("sync_updates", None),
+        )
     model_a = build_model_manager(
-        model_id=Path(checkpoint_a).stem,
-        model_type=config_a["model_type"],
-        board_size=8,
-        inner_size=config_a["hidden_size"],
+        model_id=Path(checkpoint_a).stem, model_type=config_a["model_type"],
+        board_size=8, inner_size=config_a["hidden_size"],
         n_res_layers=config_a["n_res_layers"],
-        attention_pooling=config_a["attention_pooling"],
-        mix_edge_node=config_a["mix_edge_node"],
-        add_features=config_a["add_features"],
-        self_edges=config_a["self_edges"],
-        simple_update=config_a["simple_update"],
-        sync_updates=config_a["sync_updates"],
+        **gnn_cnn_kwargs,
     )
+
+
+    gnn_cnn_kwargs = {}
+    if config_b["model_type"] in ("gnn", "cnn"):
+        gnn_cnn_kwargs = dict(
+            attention_pooling=config_b.get("attention_pooling", True),
+            mix_edge_node=config_b.get("mix_edge_node", False),
+            add_features=config_b.get("add_features", True),
+            self_edges=config_b.get("self_edges", True),
+            simple_update=config_b.get("simple_update", True),
+            sync_updates=config_b.get("sync_updates", None),
+        )
     model_b = build_model_manager(
-        model_id=Path(checkpoint_b).stem,
-        model_type=config_b["model_type"],
-        board_size=8,
-        inner_size=config_b["hidden_size"],
+        model_id=Path(checkpoint_b).stem, model_type=config_b["model_type"],
+        board_size=8, inner_size=config_b["hidden_size"],
         n_res_layers=config_b["n_res_layers"],
-        attention_pooling=config_b["attention_pooling"],
-        mix_edge_node=config_b["mix_edge_node"],
-        add_features=config_b["add_features"],
-        self_edges=config_b["self_edges"],
-        simple_update=config_b["simple_update"],
-        sync_updates=config_b["sync_updates"],
+        **gnn_cnn_kwargs,
     )
     wins = draws = losses = 0
     move_log = None
+    def _make_player(model, payload, n_sim):
+        params = {"params": payload["params"], "batch_stats": payload["batch_stats"]}
+        if payload["config"]["model_type"] == "td":
+            return ("td", (model, params))
+        return ("model", (model, params, n_sim))
+
     for game_id in range(n_games):
         if game_id % 2 == 0:
-            player0 = ("model", (model_a, {"params": payload_a["params"], "batch_stats": payload_a["batch_stats"]}, n_sim))
-            player1 = ("model", (model_b, {"params": payload_b["params"], "batch_stats": payload_b["batch_stats"]}, n_sim))
+            player0 = _make_player(model_a, payload_a, n_sim)
+            player1 = _make_player(model_b, payload_b, n_sim)
         else:
-            player0 = ("model", (model_b, {"params": payload_b["params"], "batch_stats": payload_b["batch_stats"]}, n_sim))
-            player1 = ("model", (model_a, {"params": payload_a["params"], "batch_stats": payload_a["batch_stats"]}, n_sim))
+            player0 = _make_player(model_b, payload_b, n_sim)
+            player1 = _make_player(model_a, payload_a, n_sim)
         summary = play_game(
             env=env,
             player0=player0,

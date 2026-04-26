@@ -31,11 +31,13 @@ def main() -> None:
     )
     parser.add_argument("--gnn-scratch-dir", required=True)
     parser.add_argument("--cnn-scratch-dir", required=True)
+    parser.add_argument("--td-scratch-dir", required=True)
     parser.add_argument("--pretrain-dir", required=True)
     parser.add_argument("--finetune-dir", required=True)
     parser.add_argument("--transfer-summary", default=None)
     parser.add_argument("--transfer-zero-shot", default=None)
-    parser.add_argument("--head-to-head-output", default="artifacts/experiments/head_to_head_gnn_vs_cnn.json")
+    parser.add_argument("--gnn-vs-cnn-output", default="artifacts/experiments/head_to_head_gnn_vs_cnn.json")
+    parser.add_argument("--gnn-vs-td-output", default="artifacts/experiments/head_to_head_gnn_vs_td.json")
     parser.add_argument("--summary-output", default="artifacts/experiments/postprocess_summary.json")
     parser.add_argument("--output-dir", default="report/figures")
     parser.add_argument("--n-games", type=int, default=12)
@@ -44,14 +46,23 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
-    head_to_head = evaluate_checkpoint_pair(
+    gnn_vs_cnn = evaluate_checkpoint_pair(
         final_checkpoint(args.gnn_scratch_dir),
         final_checkpoint(args.cnn_scratch_dir),
         n_games=args.n_games,
         n_sim=args.n_sim,
         max_plies=args.max_plies,
         seed=args.seed,
-        output_path=args.head_to_head_output,
+        output_path=args.gnn_vs_cnn_output,
+    )
+    gnn_vs_td = evaluate_checkpoint_pair(
+        final_checkpoint(args.gnn_scratch_dir),
+        final_checkpoint(args.td_scratch_dir),
+        n_games=args.n_games,
+        n_sim=args.n_sim,
+        max_plies=args.max_plies,
+        seed=args.seed,
+        output_path=args.gnn_vs_td_output,
     )
     generate_submission_figures(
         gnn_scratch_dir=args.gnn_scratch_dir,
@@ -69,7 +80,8 @@ def main() -> None:
         "finetune": read_json(Path(args.finetune_dir) / "summary.json"),
         "transfer_summary": read_json(args.transfer_summary) if args.transfer_summary else None,
         "transfer_zero_shot": read_json(args.transfer_zero_shot) if args.transfer_zero_shot else None,
-        "head_to_head": head_to_head,
+        "gnn_vs_cnn": gnn_vs_cnn,
+        "gnn_vs_td": gnn_vs_td,
         "figures": {
             "gnn_8x8_scratch_curve": str(Path(args.output_dir) / "gnn_8x8_scratch_curve.png"),
             "transfer_curve": str(Path(args.output_dir) / "transfer_curve.png"),

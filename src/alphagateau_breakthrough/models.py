@@ -234,7 +234,30 @@ class AlphaZeroBaseline(nn.Module):
         value = nn.Dense(1)(value)
         return logits, jnp.tanh(value).reshape((-1,))
 
+class TDValueNet(nn.Module):
+    inner_size: int = 64
+    n_res_layers: int = 4
+    board_size: int
 
+    @nn.compact
+    def __call__(self, *, x: jnp.ndarray, training: bool = False) -> jnp.ndarray:
+        x = x.astype(jnp.float32)
+        x = nn.Conv(self.inner_size, kernel_size=(3, 3), padding="SAME")(x)
+        for _ in range(self.n_res_layers):
+            x = ResidualBlock(num_channels=self.inner_size)(x=x, training=training)
+        x = nn.BatchNorm(momentum=0.9)(x, use_running_average=not training)
+        x = jax.nn.relu(x)
+        value = nn.Conv(features=1, kernel_size=(1, 1), padding="SAME")(x)
+        value = nn.BatchNorm(momentum=0.9)(value, use_running_average=not training)
+        value = jax.nn.relu(value)
+        value = value.reshape((value.shape[0], -1))
+        value = nn.Dense(self.inner_size)(value)
+        value = jax.nn.relu(value)
+        value = nn.Dense(1)(value)
+        batch_size = value.shape[0]
+        dummy_logits = jnp.zeros((batch_size, self.board_size * self.board_size * 3))
+        return dummy_logits, jnp.tanh(value).reshape((-1,))
+    
 class ModelManager(NamedTuple):
     id: str
     model: nn.Module
@@ -333,6 +356,19 @@ def build_model_manager(
             n_actions=board_size * board_size * 3,
             inner_size=inner_size,
             n_res_layers=n_res_layers,
+        )
+        return ModelManager(
+            id=model_id,
+            model=model,
+            use_graph=False,
+            board_size=board_size,
+            model_type=model_type,
+        )
+    if model_type == "td":
+        model = TDValueNet(
+            inner_size=inner_size,
+            n_res_layers=n_res_layers,
+            board_size = board_size
         )
         return ModelManager(
             id=model_id,

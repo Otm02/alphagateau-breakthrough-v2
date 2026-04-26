@@ -69,3 +69,41 @@ EXPERIMENT_PRESETS = {
         num_iterations=40,
     ),
 }
+
+@dataclass
+class TDTrainConfig:
+    experiment_name: str
+    board_size: int
+    model_type: str
+    hidden_size: int = 64
+    n_res_layers: int = 4
+    learning_rate: float = 1e-3
+    discount_factor: float = 1.0
+    num_iterations: int = 40
+    episodes_per_iteration: int = 64
+    lambda_: float = 0.0
+    eval_interval: int = 5
+    checkpoint_interval: int = 5
+    eval_games: int = 12
+    seed: int = 0
+    initial_checkpoint: str | None = None
+    max_plies: int = 256
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+TD_PRESETS = {
+    "td_5x5_scratch": TDTrainConfig(
+        model_type="td",
+        experiment_name="td_5x5_scratch",
+        board_size=5,
+        seed=42,
+        max_plies=96
+    ),
+    "td_8x8_scratch": TDTrainConfig(
+        model_type="td",
+        experiment_name="td_8x8_scratch",
+        board_size=8,
+        seed=42,
+    )
+}
