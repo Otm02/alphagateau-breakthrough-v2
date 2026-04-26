@@ -13,7 +13,7 @@
 \setlist[itemize]{leftmargin=1.1em, topsep=2pt, itemsep=1pt}
 \graphicspath{{report/figures/}{figures/}}
 
-\title{AlphaGateau for Breakthrough:\\Graph-Based Self-Play and Cross-Board Transfer}
+\title{AlphaGateau for Breakthrough:\\A peice of cake?}
 
 \author{%
   Athmane Benarous \\
@@ -31,24 +31,24 @@
 \maketitle
 
 \begin{abstract}
-We adapt AlphaGateau from chess to the abstract strategy game Breakthrough using a custom JAX
-environment, a board-size-invariant graph encoder, and an AlphaZero-style self-play training loop.
+We adapt AlphaGateau from chess to the abstract strategy game Breakthrough using a board-size-invariant graph encoder, and an AlphaZero-style self-play training loop.
 We compare a graph neural network (GNN) against a convolutional baseline (CNN) on 8$\times$8
 Breakthrough over 40 self-play iterations, and also study knowledge transfer from 5$\times$5
 pretraining to 8$\times$8 fine-tuning.
-The CNN converges cleanly to 100\% greedy-evaluation win rate by iteration 40 while the GNN
+The CNN converges to 100\% greedy-evaluation win rate within 40 interations while the GNN
 plateaus at 42\% with high variance throughout training.
-Transfer from 5$\times$5 pretraining yields a strong early benefit---67\% win rate at iteration 5
-versus 17\% from scratch---but does not close the long-run gap with the CNN baseline.
+Transfer from 5$\times$5 pretraining yields a strong early benefit (67\% win rate at iteration 5
+versus 17\% from scratch) but does not close the long-run gap with the CNN baseline.
 In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
-\emph{Roles}: Athmane Benarous led the training infrastructure and cluster orchestration; Farooq
-Khan led experiments and analysis; Andrew Saffar led graph encoding and evaluation tooling.
 \end{abstract}
 
 \section{Introduction}
 
-Breakthrough is a useful reinforcement-learning benchmark because its rules are simple but its
-tactics are strongly shaped by local geometry: pieces only move forward, captures are diagonal, and
+Breakthrough is an abstract strategy board game that is played on an 8x8 board. It can also be played on smaller board sizes and the smaller variations have been solved.
+Specifically, 6x6 first player win, 6x5 second player win, 5x5 second player win, 3x7 second player win.
+
+Such a game is perfect for our specific exploration of Graph Neural Network Archetecutre in the context of reinforcement-learning.
+Its rules are simple but tactics are strongly shaped by local geometry: pieces only move forward, captures are diagonal, and
 promotion to the opponent's back rank ends the game.
 That structure makes the game a natural candidate for graph-based state representations, where
 squares are nodes and directional moves are edges, rather than for purely image-like encodings.
@@ -80,7 +80,7 @@ Breakthrough~\cite{breakthrough} is especially attractive for this idea because 
 rules apply on 5$\times$5 and 8$\times$8 boards.
 A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
 A graph encoder can keep the same feature schema and architecture while only changing the number
-of nodes and edges. It has be solved for 6x6 \cite{jonsson2025solving}
+of nodes and edges. It has be solved for 6x6 \cite{jonsson2025solving}.
 
 \section{Methodology}
 
@@ -266,8 +266,9 @@ to eliminate any truncation artefacts from the current 192-ply limit.
 \textbf{Contributions.}
 Athmane Benarous focused on the JAX environment, training pipeline, Slurm orchestration, and
 report integration.
-Farooq Khan focused on the CNN baseline experiments, result analysis, and presentation assets.
+Farooq Khan focused on the CNN baseline experiments, result analysis, report, and presentation.
 Andrew Saffar focused on the graph encoding, evaluation tooling, and write-up support.
+
 
 \textbf{Acknowledgements.}
 We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
