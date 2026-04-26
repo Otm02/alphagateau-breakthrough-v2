@@ -80,15 +80,15 @@ def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
 
 def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):
     def loss_fn(params, batch_stats, obs, next_obs, reward, done):
-        # current state value
+        dummy_mask = jnp.ones((obs.shape[0], model.board_size * model.board_size * 3), dtype=bool)
+
         (_, v), new_batch_stats = model(
-            obs, jnp.ones(obs.shape[0], dtype=bool),  # dummy mask
+            obs, dummy_mask,
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
-        # bootstrap target — stop gradient through next state value
         (_, v_next), _ = model(
-            next_obs, jnp.ones(next_obs.shape[0], dtype=bool),
+            next_obs, dummy_mask,
             params={"params": params, "batch_stats": batch_stats},
             training=False,
         )
