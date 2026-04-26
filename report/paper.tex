@@ -1,18 +1,15 @@
 \documentclass{article}
 
 \IfFileExists{report/neurips_2023.sty}{\usepackage[final,nonatbib]{report/neurips_2023}}{\usepackage[final,nonatbib]{neurips_2023}}
-\usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{enumitem}
 \usepackage{amsmath}
 \usepackage{url}
 \usepackage{geometry}
 
 \usepackage{caption}
-\setlist[itemize]{leftmargin=1.1em, topsep=2pt, itemsep=1pt}
 \graphicspath{{report/figures/}{figures/}}
 
 \title{AlphaGateau for Breakthrough:\\A peice of cake?}
@@ -49,7 +46,7 @@ In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
 Breakthrough is an abstract strategy board game that is played on an 8x8 board.
 It can also be played on smaller board sizes and the smaller variations have been solved.
 Specifically, 6x6 first player win, 6x5 second player win, 5x5 second player win, 3x7 second player win.
-Figure \ref{fig:encoding} shows how the game is intially setup and intuitively the rules of the game. Only pieces are pawns.
+Figure \ref{fig:rules} shows the starting position and the legal forward and diagonal moves that define the game. Only pieces are pawns.
 It is a chess variant with very large state space, $1.5\times 10^{16}$ \cite{jonsson2025solving}.
 
 Such a game is perfect for our specific exploration of Graph Neural Network Archetecutre in the context of reinforcement-learning.
@@ -68,6 +65,13 @@ To answer both questions, we built a complete project pipeline: a JAX Breakthrou
 graph construction, MCTS self-play, checkpointing with resume support, evaluation, figure
 generation, and Slurm orchestration for the McGill course cluster.
 We report a negative result on the first question and a qualified positive result on the second.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\linewidth]{breakthrough_rules.png}
+  \caption{Breakthrough rules overview. \emph{Left}: the standard starting position on an 8$\times$8 board. \emph{Right}: example legal moves for White. A pawn may move one square straight forward into an empty square, or one square diagonally forward only when capturing an opposing pawn.}
+  \label{fig:rules}
+\end{figure}
 
 \section{Background}
 
