@@ -312,10 +312,41 @@ def _validate_resume_config(config: TrainConfig, resume_payload: dict) -> None:
         "simple_update",
         "sync_updates",
         "seed",
+        "lr_schedule",
+        "lr_decay_factor",
+        "lr_warmup_steps",
     ]:
         if saved.get(key) != config.to_dict().get(key):
             raise ValueError(f"Resume config mismatch for {key}: {saved.get(key)!r} != {config.to_dict().get(key)!r}")
 
+def build_optimizer(config: TrainConfig) -> optax.GradientTransformation:
+    if config.lr_schedule == "cosine":
+        schedule = optax.cosine_decay_schedule(
+            init_value=config.learning_rate,
+            decay_steps=config.num_iterations,
+        )
+    elif config.lr_schedule == "step":
+        schedule = optax.piecewise_constant_schedule(
+            init_value=config.learning_rate,
+            boundaries_and_scales={
+                config.num_iterations // 2: config.lr_decay_factor,
+            }
+        )
+    else:
+        schedule = config.learning_rate  # constant, existing behavior
+
+    if config.lr_warmup_steps > 0:
+        warmup = optax.linear_schedule(
+            init_value=0.0,
+            end_value=config.learning_rate,
+            transition_steps=config.lr_warmup_steps,
+        )
+        schedule = optax.join_schedules(
+            schedules=[warmup, schedule],
+            boundaries=[config.lr_warmup_steps],
+        )
+
+    return optax.adam(schedule)
 
 def train_experiment(
     config: TrainConfig,
@@ -329,7 +360,7 @@ def train_experiment(
     run_dir = ensure_dir(Path(output_root) / run_name)
     checkpoints_dir = ensure_dir(run_dir / "checkpoints")
     eval_dir = ensure_dir(run_dir / "evaluation")
-    optimizer = optax.adam(config.learning_rate)
+    optimizer = build_optimizer(config=config)
     resume_payload = None
     latest_checkpoint: str | None = None
     if resume and _resume_state_path(run_dir).is_file():

@@ -11,6 +11,9 @@ class TrainConfig:
     hidden_size: int = 64
     n_res_layers: int = 4
     learning_rate: float = 1e-3
+    lr_schedule: str = "constant"   # "constant", "cosine", "step"
+    lr_warmup_steps: int = 0
+    lr_decay_factor: float = 0.1    # only when lr_schedule is "step"
     num_iterations: int = 40
     selfplay_games: int = 64
     max_plies: int = 256
@@ -67,6 +70,24 @@ EXPERIMENT_PRESETS = {
         selfplay_games=64,
         max_plies=256,
         num_iterations=40,
+    ),
+    "gnn_8x8_scratch_cosine": TrainConfig(
+        experiment_name="gnn_8x8_scratch_cosine",
+        board_size=8,
+        model_type="gnn",
+        selfplay_games=64,
+        max_plies=256,
+        num_iterations=40,
+        lr_schedule="cosine",
+    ),
+    "gnn_5x5_pretrain_cosine": TrainConfig(
+        experiment_name="gnn_5x5_pretrain_cosine",
+        board_size=5,
+        model_type="gnn",
+        selfplay_games=128,
+        max_plies=96,
+        num_iterations=40,
+        lr_schedule="cosine",
     ),
 }
 

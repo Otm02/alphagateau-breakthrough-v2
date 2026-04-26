@@ -13,7 +13,8 @@ set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:?set REPO_ROOT to the cloned repository path on mimi}"
 ENV_NAME="${ENV_NAME:-comp579-breakthrough}"
-ENV_PREFIX="${ENV_PREFIX:-}"
+PROJECT_SHARED_ROOT="${PROJECT_SHARED_ROOT:-/mnt/teaching/slurm/$USER}"
+ENV_PREFIX="${ENV_PREFIX:-$PROJECT_SHARED_ROOT/envs/comp579-breakthrough}"
 PRESET="${PRESET:?set PRESET to an experiment preset}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-artifacts/experiments}"
 LOGS_DIR="${LOGS_DIR:-$REPO_ROOT/logs/slurm}"
