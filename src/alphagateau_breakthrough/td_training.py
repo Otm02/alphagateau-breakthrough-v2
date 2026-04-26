@@ -71,7 +71,7 @@ def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
         next_state = env.step(state, int(best_action))
         obs_cur = np.array(model.format_data(state=state))
         obs_nxt = np.array(model.format_data(state=next_state))
-        trajectory.append((obs_cur, obs_nxt, float(next_state.reward), float(next_state.terminated)))
+        trajectory.append((obs_cur, obs_nxt, float(next_state.rewards[state.current_player]), float(next_state.terminated)))
         state = next_state
         n_plies += 1
     return trajectory
