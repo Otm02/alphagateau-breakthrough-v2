@@ -1,5 +1,11 @@
 \begin{thebibliography}{1}
 
+\bibitem{muzero}
+Ivo Danihelka, Arthur Guez, Thomas Hubert, and David Silver.
+\newblock Policy improvement by planning with {Gumbel}.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2022.
+
 \bibitem{jonsson2025solving}
 Kristinn~Vikar Jónsson, Dagur Benjamínsson, and Steinþór~Bjarni
   Steinarsson.
@@ -7,5 +13,32 @@ Kristinn~Vikar Jónsson, Dagur Benjamínsson, and Steinþór~Bjarni
 \newblock Bachelor's thesis, Reykjavík University, Reykjavík, Iceland, 2025.
 \newblock Available at Skemman:
   \url{https://skemman.is/bitstream/1946/50478/1/Solving-Breakthrough-for-the-6x6-board.pdf}.
+
+\bibitem{alphagateau}
+A.~Kulenkampff.
+\newblock Enhancing chess reinforcement learning with graph representation
+  ({AlphaGateau}), 2024.
+\newblock Preprint/Technical Report.
+
+\bibitem{alphazero}
+David Silver, Thomas Hubert, Julian Schrittwieser, Ioannis Antonoglou, Matthew
+  Lai, Arthur Guez, Marc Lanctot, Laurent Sifre, Dharshan Kumaran, Thore
+  Graepel, et~al.
+\newblock A general reinforcement learning algorithm that masters chess, shogi,
+  and {Go} through self-play.
+\newblock {\em Science}, 362(6419):1140--1144, 2018.
+
+\bibitem{gat}
+Petar Veli{\v{c}}kovi{\'{c}}, Guillem Cucurull, Arantxa Casanova, Adriana
+  Romero, Pietro Li{\`{o}}, and Yoshua Bengio.
+\newblock Graph attention networks.
+\newblock In {\em International Conference on Learning Representations (ICLR)},
+  2018.
+
+\bibitem{breakthrough}
+{Wikipedia contributors}.
+\newblock Breakthrough (board game) --- {W}ikipedia{,} the free encyclopedia,
+  2024.
+\newblock [Online; accessed 26-April-2026].
 
 \end{thebibliography}

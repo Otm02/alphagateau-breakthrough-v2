@@ -3,9 +3,3 @@ Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
 The top-level auxiliary file: paper.aux
 The style file: plain.bst
 Database file #1: references.bib
-Warning--I didn't find a database entry for "alphazero"
-Warning--I didn't find a database entry for "muzero"
-Warning--I didn't find a database entry for "alphagateau"
-Warning--I didn't find a database entry for "gat"
-Warning--I didn't find a database entry for "breakthrough"
-(There were 5 warnings)
