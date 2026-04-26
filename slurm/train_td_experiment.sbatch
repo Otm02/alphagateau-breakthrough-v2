@@ -3,7 +3,9 @@
 # Set SLURM_ACCOUNT and SLURM_QOS in your environment or pass --account / --qos to sbatch.
 # Example for McGill COMP-579: --account=winter2026-comp579 --qos=comp579-1gpu-12h
 #SBATCH --gres=gpu:1
-#SBATCH --mem=32G
+#SBATCH --mem=16G
+#SBATCH --account=winter2026-comp579
+#SBATCH --qos=comp579-1gpu-12h
 #SBATCH --time=12:00:00
 #SBATCH --signal=B:USR1@120
 #SBATCH --output=logs/slurm/%x_%j.out
@@ -13,7 +15,8 @@ set -euo pipefail
 
 REPO_ROOT="${REPO_ROOT:?set REPO_ROOT to the cloned repository path on mimi}"
 ENV_NAME="${ENV_NAME:-comp579-breakthrough}"
-ENV_PREFIX="${ENV_PREFIX:-}"
+PROJECT_SHARED_ROOT="${PROJECT_SHARED_ROOT:-/mnt/teaching/slurm/$USER}"
+ENV_PREFIX="${ENV_PREFIX:-$HOME/envs/comp579-breakthrough}"
 PRESET="${PRESET:?set PRESET to an experiment preset}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-artifacts/experiments}"
 LOGS_DIR="${LOGS_DIR:-$REPO_ROOT/logs/slurm}"

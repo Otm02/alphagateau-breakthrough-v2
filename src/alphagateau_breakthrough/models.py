@@ -235,9 +235,10 @@ class AlphaZeroBaseline(nn.Module):
         return logits, jnp.tanh(value).reshape((-1,))
 
 class TDValueNet(nn.Module):
+    board_size: int
     inner_size: int = 64
     n_res_layers: int = 4
-    board_size: int
+    
 
     @nn.compact
     def __call__(self, *, x: jnp.ndarray, training: bool = False) -> jnp.ndarray:
@@ -366,9 +367,9 @@ def build_model_manager(
         )
     if model_type == "td":
         model = TDValueNet(
+            board_size = board_size,
             inner_size=inner_size,
             n_res_layers=n_res_layers,
-            board_size = board_size
         )
         return ModelManager(
             id=model_id,
@@ -403,3 +404,4 @@ def save_checkpoint(
 def load_checkpoint(path: str | Path) -> dict:
     with Path(path).open("rb") as file:
         return pickle.load(file)
+
