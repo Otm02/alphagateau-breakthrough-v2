@@ -119,7 +119,8 @@ TD_PRESETS = {
         experiment_name="td_5x5_scratch",
         board_size=5,
         seed=42,
-        max_plies=96
+        max_plies=96,
+        episodes_per_iteration=32,
     ),
     "td_8x8_scratch": TDTrainConfig(
         model_type="td",

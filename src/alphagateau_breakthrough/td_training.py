@@ -50,28 +50,40 @@ class SignalCheckpointState:
         print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
 
 def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
-    """Play one game greedily w.r.t. V(s'), return list of (obs, next_obs, reward, done)."""
     state = env.init(rng)
     trajectory = []
     n_plies = 0
     while not state.terminated and n_plies < max_plies:
-        legal_moves = jnp.where(state.legal_action_mask)[0]
-        # evaluate V for each successor state
-        best_action, best_val = None, -jnp.inf
-        for action in legal_moves:
-            next_state = env.step(state, action)
-            obs = model.format_data(state=next_state)
-            _, val = model(obs, next_state.legal_action_mask[jnp.newaxis], params={"params": params, "batch_stats": batch_stats})
-            val = float(val[0])
-            # flip sign if opponent's turn
-            if next_state.current_player != state.current_player:
-                val = -val
-            if val > best_val:
-                best_val, best_action = val, action
+        legal_moves = np.where(np.array(state.legal_action_mask))[0]
+
+        # batch all successor evaluations into one forward pass
+        next_states = [env.step(state, int(a)) for a in legal_moves]
+        obs_batch = jnp.concatenate(
+            [model.format_data(state=ns) for ns in next_states], axis=0
+        )
+        lam_batch = jnp.stack(
+            [ns.legal_action_mask for ns in next_states], axis=0
+        )
+        _, vals = model(
+            obs_batch, lam_batch,
+            params={"params": params, "batch_stats": batch_stats},
+        )
+        vals = np.array(vals)
+
+        # flip sign for moves that hand off to opponent
+        for i, ns in enumerate(next_states):
+            if ns.current_player != state.current_player:
+                vals[i] = -vals[i]
+
+        best_action = int(legal_moves[np.argmax(vals)])
         next_state = env.step(state, int(best_action))
         obs_cur = np.array(model.format_data(state=state))
         obs_nxt = np.array(model.format_data(state=next_state))
-        trajectory.append((obs_cur, obs_nxt, float(next_state.rewards[state.current_player]), float(next_state.terminated)))
+        trajectory.append((
+            obs_cur, obs_nxt,
+            float(next_state.rewards[state.current_player]),
+            float(next_state.terminated),
+        ))
         state = next_state
         n_plies += 1
     return trajectory
