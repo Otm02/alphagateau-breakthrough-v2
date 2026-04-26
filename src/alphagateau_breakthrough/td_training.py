@@ -50,30 +50,32 @@ class SignalCheckpointState:
         print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
 
 def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
-    """Play one game greedily w.r.t. V(s'), return list of (obs, next_obs, reward, done)."""
     state = env.init(rng)
     trajectory = []
     n_plies = 0
     while not state.terminated and n_plies < max_plies:
-        legal_moves = jnp.where(state.legal_action_mask)[0]
-        # evaluate V for each successor state
-        best_action, best_val = None, -jnp.inf
-        for action in legal_moves:
-            next_state = env.step(state, action)
-            obs = model.format_data(state=next_state)
-            _, val = model(obs, next_state.legal_action_mask[jnp.newaxis], params={"params": params, "batch_stats": batch_stats})
-            val = float(val[0])
-            # flip sign if opponent's turn
-            if next_state.current_player != state.current_player:
-                val = -val
-            if val > best_val:
-                best_val, best_action = val, action
-        next_state = env.step(state, int(best_action))
-        obs_cur = np.array(model.format_data(state=state))
+        obs = model.format_data(state=state)
+        logits, _val = model(
+            obs,
+            state.legal_action_mask,
+            params={"params": params, "batch_stats": batch_stats},
+        )
+        best_action = int(jnp.argmax(logits))
+ 
+        next_state = env.step(state, best_action)
+        obs_cur = np.array(obs)
         obs_nxt = np.array(model.format_data(state=next_state))
-        trajectory.append((obs_cur, obs_nxt, float(next_state.rewards[state.current_player]), float(next_state.terminated)))
+ 
+        trajectory.append((
+            obs_cur,
+            obs_nxt,
+            float(next_state.rewards[state.current_player]),
+            float(next_state.terminated),
+        ))
+ 
         state = next_state
         n_plies += 1
+ 
     return trajectory
 
 def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):

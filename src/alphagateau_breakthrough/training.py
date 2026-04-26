@@ -580,6 +580,9 @@ def build_config_from_preset(
     num_simulations: int | None = None,
     max_plies: int | None = None,
     eval_games: int | None = None,
+    lr_schedule: str | None = None,
+    lr_decay_factor: float | None = None,
+    lr_warmup_steps: int | None = None
 ) -> TrainConfig:
     config = preset
     if initial_checkpoint is not None:
@@ -594,4 +597,10 @@ def build_config_from_preset(
         config = replace(config, max_plies=max_plies)
     if eval_games is not None:
         config = replace(config, eval_games=eval_games)
+    if lr_schedule is not None:
+        config = replace(config, lr_schedule=lr_schedule)
+    if lr_decay_factor is not None:
+        config = replace(config, lr_decay_factor=lr_decay_factor)
+    if lr_warmup_steps is not None:
+        config = replace(config, lr_warmup_steps=lr_warmup_steps)
     return config

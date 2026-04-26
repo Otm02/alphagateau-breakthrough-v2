@@ -89,6 +89,33 @@ EXPERIMENT_PRESETS = {
         num_iterations=40,
         lr_schedule="cosine",
     ),
+    "gnn_6x6_finetune_cosine": TrainConfig(
+        experiment_name="gnn_6x6_finetune_cosine",
+        board_size=6,
+        model_type="gnn",
+        selfplay_games=64,
+        max_plies=256,
+        num_iterations=30,
+        lr_schedule="cosine", 
+    ),
+    "gnn_6x6_finetune": TrainConfig(
+        experiment_name="gnn_6x6_finetune",
+        board_size=6,
+        model_type="gnn",
+        selfplay_games=64,
+        max_plies=128,
+        num_iterations=30,
+    ),
+    "gnn_8x8_finetune_cosine": TrainConfig(
+        experiment_name="gnn_8x8_finetune_cosine",
+        board_size=8,
+        model_type="gnn",
+        selfplay_games=64,
+        max_plies=256,
+        num_iterations=30,
+        lr_schedule="cosine", 
+    ),
+    
 }
 
 @dataclass
@@ -119,7 +146,8 @@ TD_PRESETS = {
         experiment_name="td_5x5_scratch",
         board_size=5,
         seed=42,
-        max_plies=96
+        max_plies=96,
+        episodes_per_iteration=32,
     ),
     "td_8x8_scratch": TDTrainConfig(
         model_type="td",

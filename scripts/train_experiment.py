@@ -22,6 +22,9 @@ def main() -> None:
     parser.add_argument("--num-simulations", type=int, default=None)
     parser.add_argument("--max-plies", type=int, default=None)
     parser.add_argument("--eval-games", type=int, default=None)
+    parser.add_argument("--lr-schedule", default=None, choices=["constant", "cosine", "step"])
+    parser.add_argument("--lr-decay-factor", type=float, default=None)
+    parser.add_argument("--lr-warmup-steps", type=int, default=None)
     args = parser.parse_args()
 
     config = build_config_from_preset(
@@ -32,6 +35,9 @@ def main() -> None:
         num_simulations=args.num_simulations,
         max_plies=args.max_plies,
         eval_games=args.eval_games,
+        lr_schedule=args.lr_schedule,
+        lr_decay_factor=args.lr_decay_factor,
+        lr_warmup_steps=args.lr_warmup_steps,
     )
     summary = train_experiment(
         config,
