@@ -9,7 +9,9 @@
 \usepackage{enumitem}
 \usepackage{amsmath}
 \usepackage{url}
+\usepackage{geometry}
 
+\usepackage{caption}
 \setlist[itemize]{leftmargin=1.1em, topsep=2pt, itemsep=1pt}
 \graphicspath{{report/figures/}{figures/}}
 
@@ -44,8 +46,11 @@ In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
 
 \section{Introduction}
 
-Breakthrough is an abstract strategy board game that is played on an 8x8 board. It can also be played on smaller board sizes and the smaller variations have been solved.
+Breakthrough is an abstract strategy board game that is played on an 8x8 board.
+It can also be played on smaller board sizes and the smaller variations have been solved.
 Specifically, 6x6 first player win, 6x5 second player win, 5x5 second player win, 3x7 second player win.
+Figure \ref{fig:encoding} shows how the game is intially setup and intuitively the rules of the game. Only pieces are pawns.
+It is a chess variant with very large state space, $1.5\times 10^{16}$ \cite{jonsson2025solving}.
 
 Such a game is perfect for our specific exploration of Graph Neural Network Archetecutre in the context of reinforcement-learning.
 Its rules are simple but tactics are strongly shaped by local geometry: pieces only move forward, captures are diagonal, and
@@ -53,6 +58,7 @@ promotion to the opponent's back rank ends the game.
 That structure makes the game a natural candidate for graph-based state representations, where
 squares are nodes and directional moves are edges, rather than for purely image-like encodings.
 
+% TODO: review at the end.
 Our project addresses two questions.
 First, does an AlphaGateau-style GNN outperform a simpler CNN baseline on 8$\times$8 Breakthrough
 under a course-feasible self-play budget?
@@ -81,6 +87,9 @@ rules apply on 5$\times$5 and 8$\times$8 boards.
 A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
 A graph encoder can keep the same feature schema and architecture while only changing the number
 of nodes and edges. It has be solved for 6x6 \cite{jonsson2025solving}.
+This was solved with informed solving and table-based backwards solving \cite{jonsson2025solving}.
+
+
 
 \section{Methodology}
 
@@ -268,7 +277,6 @@ Athmane Benarous focused on the JAX environment, training pipeline, Slurm orches
 report integration.
 Farooq Khan focused on the CNN baseline experiments, result analysis, report, and presentation.
 Andrew Saffar focused on the graph encoding, evaluation tooling, and write-up support.
-
 
 \textbf{Acknowledgements.}
 We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
