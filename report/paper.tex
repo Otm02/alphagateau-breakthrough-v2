@@ -75,6 +75,20 @@ We report a negative result on the first question and a qualified positive resul
 
 \section{Background}
 
+Prior work on Breakthrough has focused on exact game solving rather than self-play learning.
+Most notably, recent work weakly solved the 6x6 variant as a first-player win using a hybrid of endgame tablebases,
+race patterns, proof-number-based search, and a neural-network-guided job scheduler (with 48 days of non-stop search)\cite{jonsson2025solving}.
+Earlier work used race patterns and job-level proof-number search to solve smaller variants such as
+6x5 . % TODO: cite
+These methods aim to prove the game-theoretic value of positions; by contrast, our goal is not exact solving but to study learned policy/value models under a practical training budget.
+
+
+Breakthrough~\cite{breakthrough} is especially attractive for this idea because the same move
+rules apply on 5$\times$5 and 8$\times$8 boards.
+A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
+A graph encoder can keep the same feature schema and architecture while only changing the number
+of nodes and edges.
+
 AlphaZero-style agents combine self-play reinforcement learning with Monte Carlo Tree Search
 (MCTS)~\cite{alphazero}.
 A neural network predicts a policy over actions and a scalar value estimate; MCTS then refines
@@ -85,13 +99,6 @@ differentiably perturbing the policy logits with Gumbel noise.
 AlphaGateau~\cite{alphagateau} replaces the convolutional encoder in AlphaZero with a graph
 neural network, aiming to better represent the relational structure of board games.
 It uses graph attention~\cite{gat} with residual message passing layers.
-
-Breakthrough~\cite{breakthrough} is especially attractive for this idea because the same move
-rules apply on 5$\times$5 and 8$\times$8 boards.
-A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
-A graph encoder can keep the same feature schema and architecture while only changing the number
-of nodes and edges. It has be solved for 6x6 \cite{jonsson2025solving}.
-This was solved with informed solving and table-based backwards solving \cite{jonsson2025solving}.
 
 
 
