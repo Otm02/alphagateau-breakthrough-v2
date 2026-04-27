@@ -92,19 +92,22 @@ def play_game(
             model, params = agent_payload
             legal_moves = np.where(np.array(state.legal_action_mask))[0]
             best_action, best_val = None, float("-inf")
-            for action in legal_moves:
-                next_state = env.step(state, jnp.int32(action))
-                obs = model.format_data(state=next_state)
+            n_actions = env.board_size * env.board_size * 3
+            for a in legal_moves:
+                next_state = env.step(state, jnp.int32(a))
+                obs = model.format_data(state=next_state)[jnp.newaxis]  # add batch dim
+                dummy_mask = jnp.ones((1, n_actions), dtype=bool)
                 _, val = model(
                     obs,
-                    next_state.legal_action_mask[jnp.newaxis],
+                    dummy_mask,
                     params=params,
+                    training=False,  # critical
                 )
                 val = float(val[0])
                 if next_state.current_player != state.current_player:
                     val = -val
                 if val > best_val:
-                    best_val, best_action = val, action
+                    best_val, best_action = val, a
             action = int(best_action)
         else:
             legal = np.where(np.array(state.legal_action_mask))[0]
