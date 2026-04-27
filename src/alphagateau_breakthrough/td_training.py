@@ -54,28 +54,33 @@ def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
     trajectory = []
     n_plies = 0
     while not state.terminated and n_plies < max_plies:
-        obs = model.format_data(state=state)
-        logits, _val = model(
-            obs,
-            state.legal_action_mask,
+        legal_moves = np.where(np.array(state.legal_action_mask))[0]
+        next_states = [env.step(state, int(a)) for a in legal_moves]
+        obs_batch = jnp.concatenate(
+            [model.format_data(state=ns) for ns in next_states], axis=0
+        )
+        lam_batch = jnp.stack(
+            [ns.legal_action_mask for ns in next_states], axis=0
+        )
+        _, vals = model(
+            obs_batch, lam_batch,
             params={"params": params, "batch_stats": batch_stats},
         )
-        best_action = int(jnp.argmax(logits))
- 
+        vals = np.array(vals)
+        for i, ns in enumerate(next_states):
+            if ns.current_player != state.current_player:
+                vals[i] = -vals[i]
+        best_action = int(legal_moves[np.argmax(vals)])
         next_state = env.step(state, best_action)
-        obs_cur = np.array(obs)
+        obs_cur = np.array(model.format_data(state=state))
         obs_nxt = np.array(model.format_data(state=next_state))
- 
         trajectory.append((
-            obs_cur,
-            obs_nxt,
+            obs_cur, obs_nxt,
             float(next_state.rewards[state.current_player]),
             float(next_state.terminated),
         ))
- 
         state = next_state
         n_plies += 1
- 
     return trajectory
 
 def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):

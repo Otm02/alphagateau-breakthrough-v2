@@ -238,7 +238,7 @@ class TDValueNet(nn.Module):
     board_size: int
     inner_size: int = 64
     n_res_layers: int = 4
- 
+
     @nn.compact
     def __call__(self, *, x: jnp.ndarray, training: bool = False) -> Tuple[jnp.ndarray, jnp.ndarray]:
         x = x.astype(jnp.float32)
@@ -247,7 +247,6 @@ class TDValueNet(nn.Module):
             x = ResidualBlock(num_channels=self.inner_size)(x=x, training=training)
         x = nn.BatchNorm(momentum=0.9)(x, use_running_average=not training)
         x = jax.nn.relu(x)
- 
         value = nn.Conv(features=1, kernel_size=(1, 1), padding="SAME")(x)
         value = nn.BatchNorm(momentum=0.9)(value, use_running_average=not training)
         value = jax.nn.relu(value)
@@ -255,15 +254,9 @@ class TDValueNet(nn.Module):
         value = nn.Dense(self.inner_size)(value)
         value = jax.nn.relu(value)
         value = nn.Dense(1)(value)
- 
-        # Trained implicitly via self-play action selection — no policy loss needed.
-        policy = nn.Conv(features=2, kernel_size=(1, 1), padding="SAME")(x)
-        policy = nn.BatchNorm(momentum=0.9)(policy, use_running_average=not training)
-        policy = jax.nn.relu(policy)
-        policy = policy.reshape((policy.shape[0], -1))
-        policy = nn.Dense(self.board_size * self.board_size * 3)(policy)
- 
-        return policy, jnp.tanh(value).reshape((-1,))
+        batch_size = value.shape[0]
+        dummy_logits = jnp.zeros((batch_size, self.board_size * self.board_size * 3))
+        return dummy_logits, jnp.tanh(value).reshape((-1,))
     
 class ModelManager(NamedTuple):
     id: str
