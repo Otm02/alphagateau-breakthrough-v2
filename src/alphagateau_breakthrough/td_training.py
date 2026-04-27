@@ -66,25 +66,21 @@ def make_batch_successors(env):
  
 def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies, batch_successors):
     """
-    One self-play episode for TD training.
+    One self-play episode for TD(λ) training.
  
-    Uses a vmapped env.step over all actions at once (fixed shape = num_actions),
-    so JAX compiles batch_successors exactly once for the lifetime of the run.
- 
-    Per-ply cost: 1 vmapped env.step (GPU) + 1 batched model forward pass (GPU).
-    No Python loop over legal moves.
+    Returns a trajectory of (obs, next_obs, reward, done) tuples.
     """
     state = env.init(rng)
     trajectory = []
     n_plies = 0
  
     while not state.terminated and n_plies < max_plies:
-        legal_mask = np.array(state.legal_action_mask)          # (num_actions,)
-        legal_indices = np.where(legal_mask)[0]                  # variable length, CPU only
+        legal_mask = np.array(state.legal_action_mask)
+        legal_indices = np.where(legal_mask)[0]
         current_player = int(state.current_player)
  
         # Single vmapped call over ALL actions — fixed shape, no recompilation
-        all_next_states = batch_successors(state)               # BreakthroughState with leading dim num_actions
+        all_next_states = batch_successors(state)
  
         # Gather only the legal successor observations
         obs_list = []
@@ -94,26 +90,22 @@ def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies, batch_s
             obs_list.append(model.format_data(state=ns_i))
             lam_list.append(ns_i.legal_action_mask)
  
-        obs_batch = jnp.concatenate(obs_list, axis=0)           # (n_legal, *obs_shape)
-        lam_batch = jnp.stack(lam_list, axis=0)                 # (n_legal, num_actions)
+        obs_batch = jnp.concatenate(obs_list, axis=0)
+        lam_batch = jnp.stack(lam_list, axis=0)
  
-        # Single batched forward pass for all legal successors
         _, vals = model(
             obs_batch, lam_batch,
             params={"params": params, "batch_stats": batch_stats},
         )
-        vals = np.array(vals)                                    # (n_legal,)
+        vals = np.array(vals)
  
-        # Flip value sign for successors where the opponent is now to move
-        next_players = np.array(all_next_states.current_player)  # pull once, shape (num_actions,)
+        next_players = np.array(all_next_states.current_player)
         for k, i in enumerate(legal_indices):
             if next_players[i] != current_player:
                 vals[k] = -vals[k]
  
         best_k = int(np.argmax(vals))
         best_action = int(legal_indices[best_k])
- 
-        # One final step for the chosen action to get the authoritative next state
         next_state = env.step(state, best_action)
  
         obs_cur = np.array(model.format_data(state=state))
@@ -130,40 +122,137 @@ def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies, batch_s
  
     return trajectory
 
-def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):
-    def loss_fn(params, batch_stats, obs, next_obs, reward, done):
+def compute_lambda_returns(
+    trajectory: list[tuple],
+    model: ModelManager,
+    params,
+    batch_stats,
+    gamma: float,
+    lambda_: float,
+) -> list[tuple]:
+    """
+    Compute offline λ-returns for a trajectory and return (obs, lambda_return) pairs.
+ 
+    G_t^λ = (1 - λ) * Σ_{n=1}^{T-t-1} λ^{n-1} * G_t^{(n)}  +  λ^{T-t-1} * G_t^{T}
+ 
+    Equivalently, the backward recursive form (used here, O(T) time):
+        G_T = r_T                                      (terminal)
+        G_t = r_t + gamma * [(1-λ) * V(s_{t+1}) + λ * G_{t+1}]
+ 
+    This is exact and avoids storing eligibility traces.
+ 
+    Args:
+        trajectory: list of (obs, next_obs, reward, done) from td_selfplay_episode
+        model: ModelManager for computing V(s_{t+1})
+        params, batch_stats: current model parameters
+        gamma: discount factor
+        lambda_: TD(λ) mixing parameter (0 = TD(0), 1 = Monte Carlo)
+ 
+    Returns:
+        list of (obs, lambda_return) pairs ready for training
+    """
+    if not trajectory:
+        return []
+ 
+    T = len(trajectory)
+ 
+    # Batch all next_obs into one forward pass to get V(s_{t+1}) for all t
+    all_next_obs = jnp.array([t[1] for t in trajectory])   # (T, *obs_shape)
+    n_actions = model.board_size * model.board_size * 3
+    dummy_mask = jnp.ones((T, n_actions), dtype=bool)
+ 
+    _, v_next_all = model(
+        all_next_obs, dummy_mask,
+        params={"params": params, "batch_stats": batch_stats},
+        training=False,
+    )
+    v_next_all = np.array(v_next_all)   # (T,)
+ 
+    # Backward sweep to compute λ-returns
+    lambda_returns = np.zeros(T, dtype=np.float32)
+    g = 0.0  # G_{T} initialised; will be set at first (last) step
+ 
+    for t in reversed(range(T)):
+        _, _, reward, done = trajectory[t]
+        v_next = float(v_next_all[t])
+ 
+        if done:
+            # Terminal transition: no bootstrap, G_t = reward
+            g = reward
+        else:
+            # G_t = r_t + gamma * [(1 - lambda_) * V(s_{t+1}) + lambda_ * G_{t+1}]
+            g = reward + gamma * ((1.0 - lambda_) * v_next + lambda_ * g)
+ 
+        lambda_returns[t] = g
+ 
+    return [(trajectory[t][0], lambda_returns[t]) for t in range(T)]
+ 
+ 
+def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTransformation):
+    """
+    Train step for TD(λ): fits V(s) directly to precomputed λ-returns.
+ 
+    The λ-returns are computed offline before this call, so the loss is a
+    simple MSE between the model's value prediction and the target.
+    No bootstrapping happens inside this function.
+    """
+    def loss_fn(params, batch_stats, obs, targets):
         n_actions = model.board_size * model.board_size * 3
         dummy_mask = jnp.ones((obs.shape[0], n_actions), dtype=bool)
-
-        # training=True → returns ((logits, value), batch_stats)
+ 
         (_, v), new_batch_stats = model(
             obs, dummy_mask,
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
-
-        # training=False → returns (logits, value) directly, no batch_stats
-        _, v_next = model(
-            next_obs, dummy_mask,
-            params={"params": params, "batch_stats": batch_stats},
-            training=False,
-        )
-
-        v_next = jax.lax.stop_gradient(v_next)
-        target = reward + gamma * v_next * (1.0 - done)
-        loss = jnp.mean((v - target) ** 2)
+        loss = jnp.mean((v - targets) ** 2)
         return loss, new_batch_stats
-
+ 
     @jax.jit
-    def train_step(params, batch_stats, opt_state, obs, next_obs, reward, done):
+    def train_step(params, batch_stats, opt_state, obs, targets):
         (loss, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
-            params, batch_stats, obs, next_obs, reward, done
+            params, batch_stats, obs, targets
         )
         updates, new_opt_state = optimizer.update(grads, opt_state, params)
         new_params = optax.apply_updates(params, updates)
         return new_params, new_batch_stats, new_opt_state, loss
-
+ 
     return train_step
+
+# def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):
+#     def loss_fn(params, batch_stats, obs, next_obs, reward, done):
+#         n_actions = model.board_size * model.board_size * 3
+#         dummy_mask = jnp.ones((obs.shape[0], n_actions), dtype=bool)
+
+#         # training=True → returns ((logits, value), batch_stats)
+#         (_, v), new_batch_stats = model(
+#             obs, dummy_mask,
+#             params={"params": params, "batch_stats": batch_stats},
+#             training=True,
+#         )
+
+#         # training=False → returns (logits, value) directly, no batch_stats
+#         _, v_next = model(
+#             next_obs, dummy_mask,
+#             params={"params": params, "batch_stats": batch_stats},
+#             training=False,
+#         )
+
+#         v_next = jax.lax.stop_gradient(v_next)
+#         target = reward + gamma * v_next * (1.0 - done)
+#         loss = jnp.mean((v - target) ** 2)
+#         return loss, new_batch_stats
+
+#     @jax.jit
+#     def train_step(params, batch_stats, opt_state, obs, next_obs, reward, done):
+#         (loss, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
+#             params, batch_stats, obs, next_obs, reward, done
+#         )
+#         updates, new_opt_state = optimizer.update(grads, opt_state, params)
+#         new_params = optax.apply_updates(params, updates)
+#         return new_params, new_batch_stats, new_opt_state, loss
+
+#     return train_step
 
 
 def initialise_td_model(config: TDTrainConfig, run_name: str) -> tuple[ModelManager, chex.ArrayTree, chex.ArrayTree]:
@@ -391,7 +480,7 @@ def train_experiment(
         eval_rows = []
         completed_iterations = 0
 
-    train_step = make_td_train_step(model, optimizer, gamma=config.discount_factor)
+    train_step = make_td_lambda_train_step(model, optimizer)
     interrupted = False
     interrupt_signal = None
     final_checkpoint = checkpoints_dir / "final.pkl"
@@ -408,25 +497,35 @@ def train_experiment(
             batch_successors = make_batch_successors(env) 
             for iteration in range(completed_iterations + 1, config.num_iterations + 1):
                 rng, *episode_keys = jax.random.split(rng, config.episodes_per_iteration + 1)
-                all_transitions = []
+ 
+                # Collect trajectories
+                all_samples = []  # list of (obs, lambda_return)
                 for ep_key in episode_keys:
                     trajectory = td_selfplay_episode(
                         env, params, batch_stats, model, ep_key, config.max_plies, batch_successors
                     )
-                    all_transitions.extend(trajectory)
-
-                obs      = jnp.array([t[0] for t in all_transitions])
-                next_obs = jnp.array([t[1] for t in all_transitions])
-                reward   = jnp.array([t[2] for t in all_transitions], dtype=jnp.float32)
-                done     = jnp.array([t[3] for t in all_transitions], dtype=jnp.float32)
-
+                    # Compute λ-returns offline for this episode
+                    samples = compute_lambda_returns(
+                        trajectory,
+                        model=model,
+                        params=params,
+                        batch_stats=batch_stats,
+                        gamma=config.discount_factor,
+                        lambda_=config.lambda_,
+                    )
+                    all_samples.extend(samples)
+ 
+                # Build training batch from (obs, lambda_return) pairs
+                obs     = jnp.array([s[0] for s in all_samples])
+                targets = jnp.array([s[1] for s in all_samples], dtype=jnp.float32)
+ 
                 params, batch_stats, opt_state, loss = train_step(
-                    params, batch_stats, opt_state, obs, next_obs, reward, done
+                    params, batch_stats, opt_state, obs, targets
                 )
-
+ 
                 metrics_row = {
                     "iteration": iteration,
-                    "n_transitions": len(all_transitions),
+                    "n_transitions": len(all_samples),
                     "value_loss": float(loss),
                 }
                 metrics_rows.append(metrics_row)
