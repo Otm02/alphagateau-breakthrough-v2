@@ -212,7 +212,7 @@ AlphaGateau-master/
 
 # Local training outputs
 artifacts/
-logs/
+# logs/
 *.pkl
 
 # Local report build outputs

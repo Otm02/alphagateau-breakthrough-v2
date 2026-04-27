@@ -1,0 +1,6 @@
+Loaded cuda module: cuda/cuda-12.6
+
+EnvironmentNameNotFound: Could not find conda environment: comp579-breakthrough
+You can list all discoverable environments with `conda info --envs`.
+
+
