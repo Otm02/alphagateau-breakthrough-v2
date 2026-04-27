@@ -46,28 +46,22 @@ In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
 
 \section{Introduction}
 
-Breakthrough is an abstract strategy board game that is played on an 8x8 board.
-It can also be played on smaller board sizes and the smaller variations have been solved.
-Specifically, 6x6 first player win, 6x5 second player win, 5x5 second player win, 3x7 second player win.
-Figure \ref{fig:rules} shows the starting position and the legal forward and diagonal moves that define the game. Only pieces are pawns.
-It is a chess variant with very large state space, $1.5\times 10^{16}$ \cite{jonsson2025solving}.
 
-Such a game is perfect for our specific exploration of Graph Neural Network Archetecutre in the context of reinforcement-learning.
-Its rules are simple but tactics are strongly shaped by local geometry: pieces only move forward, captures are diagonal, and
-promotion to the opponent's back rank ends the game.
-That structure makes the game a natural candidate for graph-based state representations, where
-squares are nodes and directional moves are edges, rather than for purely image-like encodings.
+Breakthrough is a two-player abstract strategy game played on an $8\times8$ board in which each side controls only pawns.
+Despite its simple rules, the game is strategically rich and has a large state space of approximately $1.5\times 10^{16}$ \cite{jonsson2025solving}.
+Figure~\ref{fig:rules} illustrates the starting position and the legal forward and diagonal-capture moves that define the game.
 
-% TODO: review at the end.
-Our project addresses two questions.
-First, does an AlphaGateau-style GNN outperform a simpler CNN baseline on 8$\times$8 Breakthrough
-under a course-feasible self-play budget?
-Second, does the GNN's board-size-invariant representation make 5$\times$5~$\rightarrow$~8$\times$8
-transfer meaningful and useful?
-To answer both questions, we built a complete project pipeline: a JAX Breakthrough environment,
-graph construction, MCTS self-play, checkpointing with resume support, evaluation, figure
-generation, and Slurm orchestration for the McGill course cluster.
-We report a negative result on the first question and a qualified positive result on the second.
+Breakthrough is a useful testbed for studying learned representations in reinforcement learning.
+Its rules are simple, but successful play depends heavily on local geometry: pieces move only forward, captures are diagonal, and reaching the opponent's back rank ends the game.
+This structure makes the game a natural candidate for graph-based representations, in which squares are nodes and legal relations are edges rather than purely image-like grid encodings.
+It is especially attractive for transfer experiments because the same local move rules apply across board sizes.
+
+Our project studies two questions.
+First, under a fixed self-play training budget, does an AlphaGateau-style graph neural network (GNN) outperform a simpler convolutional neural network (CNN) baseline on 8$\times$8 Breakthrough?
+Second, does the GNN's board-size-invariant representation make transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning meaningful?
+To answer these questions, we built a JAX-based self-play training and evaluation pipeline for Breakthrough and compared graph and convolutional agents under matched settings.
+Our main findings are that the CNN baseline outperforms the GNN from scratch on 8$\times$8, while 5$\times$5 pretraining gives the GNN a clear early advantage during transfer without closing the full gap to the
+CNN.
 
 \begin{figure}[t]
   \centering
@@ -78,30 +72,31 @@ We report a negative result on the first question and a qualified positive resul
 
 \section{Background}
 
-Prior work on Breakthrough has focused on exact game solving rather than self-play learning.
-Most notably, recent work weakly solved the 6x6 variant as a first-player win using a hybrid of endgame tablebases,
-race patterns, proof-number-based search, and a neural-network-guided job scheduler (with 48 days of non-stop search)\cite{jonsson2025solving}.
-Earlier work used race patterns and job-level proof-number search to solve smaller variants such as
-6x5 . % TODO: cite
-These methods aim to prove the game-theoretic value of positions; by contrast, our goal is not exact solving but to study learned policy/value models under a practical training budget.
-
-
-Breakthrough~\cite{breakthrough} is especially attractive for this idea because the same move
-rules apply on 5$\times$5 and 8$\times$8 boards.
-A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
-A graph encoder can keep the same feature schema and architecture while only changing the number
-of nodes and edges.
-
 AlphaZero-style agents combine self-play reinforcement learning with Monte Carlo Tree Search
 (MCTS)~\cite{alphazero}.
 A neural network predicts a policy over actions and a scalar value estimate; MCTS then refines
 action selection during play, and the search distribution becomes a policy target for training.
-We use Gumbel MCTS from the \texttt{mctx} library~\cite{muzero}, which selects actions by
-differentiably perturbing the policy logits with Gumbel noise.
+We use Gumbel MCTS\footnote{using the \texttt{mctx} library}, which selects actions by
+differentiably perturbing the policy logits with Gumbel noise~\cite{muzero}.
 
 AlphaGateau~\cite{alphagateau} replaces the convolutional encoder in AlphaZero with a graph
 neural network, aiming to better represent the relational structure of board games.
 It uses graph attention~\cite{gat} with residual message passing layers.
+
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play learning.
+Early work combined race patterns with job-level proof-number search to solve the 6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}.
+More recently, the 6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
+race patterns, proof-number-based search, and a neural-network-guided job scheduler~\cite{jonsson2025solving}.
+These results show that, despite simple rules, Breakthrough is strategically rich enough to support substantial search and solving research.
+
+Those exact-solving systems aim to prove the game-theoretic value of positions.
+Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study whether learned policy/value models can play effectively under self-play.
+In particular, we care about representation quality and cross-board transfer rather than formal game-theory optimality.
+
+Breakthrough~\cite{breakthrough} is especially attractive for this representation question because the same local move rules apply on both 5$\times$5 and 8$\times$8 boards.
+A fixed-size CNN processes an 8$\times$8 grid directly but does not naturally reuse the same architecture across board sizes.
+By contrast, a graph encoder can preserve the same feature schema while changing only the number of nodes and edges.
+This makes Breakthrough a clean testbed for our two questions: whether a GNN is competitive with a CNN under the same RL budget, and whether a board-size-invariant graph representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful.
 
 
 

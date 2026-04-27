@@ -19,6 +19,12 @@ A.~Kulenkampff.
   ({AlphaGateau}), 2024.
 \newblock Preprint/Technical Report.
 
+\bibitem{saffidine2011breakthrough}
+Abdallah Saffidine, Nicolas Jouandeau, and Tristan Cazenave.
+\newblock Solving breakthrough with race patterns and job-level proof number
+  search.
+\newblock In {\em Advances in Computer Games}, pages 196--207, 2011.
+
 \bibitem{alphazero}
 David Silver, Thomas Hubert, Julian Schrittwieser, Ioannis Antonoglou, Matthew
   Lai, Arthur Guez, Marc Lanctot, Laurent Sifre, Dharshan Kumaran, Thore
