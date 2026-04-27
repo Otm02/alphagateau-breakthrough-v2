@@ -78,30 +78,31 @@ We report a negative result on the first question and a qualified positive resul
 
 \section{Background}
 
-Prior work on Breakthrough has focused on exact game solving rather than self-play learning.
-Most notably, recent work weakly solved the 6x6 variant as a first-player win using a hybrid of endgame tablebases,
-race patterns, proof-number-based search, and a neural-network-guided job scheduler (with 48 days of non-stop search)\cite{jonsson2025solving}.
-Earlier work used race patterns and job-level proof-number search to solve smaller variants such as
-6x5 . % TODO: cite
-These methods aim to prove the game-theoretic value of positions; by contrast, our goal is not exact solving but to study learned policy/value models under a practical training budget.
-
-
-Breakthrough~\cite{breakthrough} is especially attractive for this idea because the same move
-rules apply on 5$\times$5 and 8$\times$8 boards.
-A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
-A graph encoder can keep the same feature schema and architecture while only changing the number
-of nodes and edges.
-
 AlphaZero-style agents combine self-play reinforcement learning with Monte Carlo Tree Search
 (MCTS)~\cite{alphazero}.
 A neural network predicts a policy over actions and a scalar value estimate; MCTS then refines
 action selection during play, and the search distribution becomes a policy target for training.
-We use Gumbel MCTS from the \texttt{mctx} library~\cite{muzero}, which selects actions by
-differentiably perturbing the policy logits with Gumbel noise.
+We use Gumbel MCTS\footnote{using the \texttt{mctx} library}, which selects actions by
+differentiably perturbing the policy logits with Gumbel noise~\cite{muzero}.
 
 AlphaGateau~\cite{alphagateau} replaces the convolutional encoder in AlphaZero with a graph
 neural network, aiming to better represent the relational structure of board games.
 It uses graph attention~\cite{gat} with residual message passing layers.
+
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play learning.
+Early work combined race patterns with job-level proof-number search to solve the 6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}.
+More recently, the 6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
+race patterns, proof-number-based search, and a neural-network-guided job scheduler~\cite{jonsson2025solving}.
+These results show that, despite simple rules, Breakthrough is strategically rich enough to support substantial search and solving research.
+
+Those exact-solving systems aim to prove the game-theoretic value of positions.
+Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study whether learned policy/value models can play effectively under self-play.
+In particular, we care about representation quality and cross-board transfer rather than formal game-theory optimality.
+
+Breakthrough~\cite{breakthrough} is especially attractive for this representation question because the same local move rules apply on both 5$\times$5 and 8$\times$8 boards.
+A fixed-size CNN processes an 8$\times$8 grid directly but does not naturally reuse the same architecture across board sizes.
+By contrast, a graph encoder can preserve the same feature schema while changing only the number of nodes and edges.
+This makes Breakthrough a clean testbed for our two questions: whether a GNN is competitive with a CNN under the same RL budget, and whether a board-size-invariant graph representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful.
 
 
 
