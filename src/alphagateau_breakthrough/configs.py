@@ -135,7 +135,8 @@ class TDTrainConfig:
     eval_games: int = 12
     seed: int = 0
     initial_checkpoint: str | None = None
-    max_plies: int = 256
+    max_plies: int = 256,
+    training_passes: int = 1
 
     def to_dict(self) -> dict:
         return asdict(self)

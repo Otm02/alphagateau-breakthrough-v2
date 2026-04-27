@@ -49,157 +49,181 @@ class SignalCheckpointState:
                 self.signal_name = str(signum)
         print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
 
-def make_batch_successors(env):
-    """
-    Returns a JIT-compiled function that steps ALL possible actions from a state
-    in a single vmapped GPU call. Shape is always (num_actions,) so JAX compiles once.
-    Illegal actions are handled gracefully by env.step (returns same state).
-    """
-    all_actions = jnp.arange(env.num_actions, dtype=jnp.int32)
- 
-    @jax.jit
-    def batch_successors(state: BreakthroughState) -> BreakthroughState:
-        return jax.vmap(lambda a: env.step(state, a))(all_actions)
- 
-    return batch_successors
- 
- 
-def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies, batch_successors):
-    """
-    One self-play episode for TD(λ) training.
- 
-    Returns a trajectory of (obs, next_obs, reward, done) tuples.
-    """
-    state = env.init(rng)
-    trajectory = []
-    n_plies = 0
- 
-    while not state.terminated and n_plies < max_plies:
-        legal_mask = np.array(state.legal_action_mask)
-        legal_indices = np.where(legal_mask)[0]
-        current_player = int(state.current_player)
- 
-        # Single vmapped call over ALL actions — fixed shape, no recompilation
-        all_next_states = batch_successors(state)
- 
-        # Gather only the legal successor observations
-        obs_list = []
-        lam_list = []
-        for i in legal_indices:
-            ns_i = jax.tree_util.tree_map(lambda x: x[i], all_next_states)
-            obs_list.append(model.format_data(state=ns_i))
-            lam_list.append(ns_i.legal_action_mask)
- 
-        obs_batch = jnp.concatenate(obs_list, axis=0)
-        lam_batch = jnp.stack(lam_list, axis=0)
- 
-        _, vals = model(
-            obs_batch, lam_batch,
-            params={"params": params, "batch_stats": batch_stats},
-        )
-        vals = np.array(vals)
- 
-        next_players = np.array(all_next_states.current_player)
-        for k, i in enumerate(legal_indices):
-            if next_players[i] != current_player:
-                vals[k] = -vals[k]
- 
-        best_k = int(np.argmax(vals))
-        best_action = int(legal_indices[best_k])
-        next_state = env.step(state, best_action)
- 
-        obs_cur = np.array(model.format_data(state=state))
-        obs_nxt = np.array(model.format_data(state=next_state))
-        trajectory.append((
-            obs_cur,
-            obs_nxt,
-            float(next_state.rewards[current_player]),
-            float(next_state.terminated),
-        ))
- 
-        state = next_state
-        n_plies += 1
- 
-    return trajectory
 
-def compute_lambda_returns(
-    trajectory: list[tuple],
-    model: ModelManager,
-    params,
-    batch_stats,
-    gamma: float,
-    lambda_: float,
-) -> list[tuple]:
+def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: int):
     """
-    Compute offline λ-returns for a trajectory and return (obs, lambda_return) pairs.
- 
-    G_t^λ = (1 - λ) * Σ_{n=1}^{T-t-1} λ^{n-1} * G_t^{(n)}  +  λ^{T-t-1} * G_t^{T}
- 
-    Equivalently, the backward recursive form (used here, O(T) time):
-        G_T = r_T                                      (terminal)
-        G_t = r_t + gamma * [(1-λ) * V(s_{t+1}) + λ * G_{t+1}]
- 
-    This is exact and avoids storing eligibility traces.
- 
-    Args:
-        trajectory: list of (obs, next_obs, reward, done) from td_selfplay_episode
-        model: ModelManager for computing V(s_{t+1})
-        params, batch_stats: current model parameters
-        gamma: discount factor
-        lambda_: TD(λ) mixing parameter (0 = TD(0), 1 = Monte Carlo)
+    Returns a JIT-compiled function that collects a batch of self-play episodes
+    entirely on-device using lax.while_loop + vmap.
  
     Returns:
-        list of (obs, lambda_return) pairs ready for training
+        obs        : (n_episodes, max_plies, *obs_shape)   float32
+        rewards    : (n_episodes, max_plies)                float32
+        dones      : (n_episodes, max_plies)                bool
+        lengths    : (n_episodes,)                          int32   — actual ply count
     """
-    if not trajectory:
-        return []
+    n_actions = env.num_actions
+    # Dummy state to infer obs shape
+    dummy_state = env.init(jax.random.PRNGKey(0))
+    obs_shape = model.format_data(state=dummy_state).shape  # (*obs_shape,)
  
-    T = len(trajectory)
+    def _greedy_action(state: BreakthroughState, params: chex.ArrayTree) -> jnp.ndarray:
+        """Pick the action with highest value among legal successors."""
+        all_actions = jnp.arange(n_actions, dtype=jnp.int32)
+        all_next = jax.vmap(lambda a: env.step(state, a))(all_actions)
  
-    # Batch all next_obs into one forward pass to get V(s_{t+1}) for all t
-    all_next_obs = jnp.array([t[1] for t in trajectory])   # (T, *obs_shape)
-    n_actions = model.board_size * model.board_size * 3
-    dummy_mask = jnp.ones((T, n_actions), dtype=bool)
- 
-    _, v_next_all = model(
-        all_next_obs, dummy_mask,
-        params={"params": params, "batch_stats": batch_stats},
-        training=False,
-    )
-    v_next_all = np.array(v_next_all)   # (T,)
- 
-    # Backward sweep to compute λ-returns
-    lambda_returns = np.zeros(T, dtype=np.float32)
-    g = 0.0  # G_{T} initialised; will be set at first (last) step
- 
-    for t in reversed(range(T)):
-        _, _, reward, done = trajectory[t]
-        v_next = float(v_next_all[t])
- 
-        if done:
-            # Terminal transition: no bootstrap, G_t = reward
-            g = reward
+        # Format observations for all successors at once
+        # use_graph=False path: stack observations directly
+        # use_graph=True  path: not amenable to simple vmap obs stacking,
+        #                       so we fall back to value-from-logits trick below.
+        if model.use_graph:
+            # For GNN models: score each legal action via the policy logits of
+            # the *current* state (cheaper than vmapping graph construction).
+            obs_cur = model.format_data(state=state)
+            # obs_cur is a BreakthroughGraphsTuple — call model with a batch of 1
+            logits, _ = model(
+                obs_cur,
+                state.legal_action_mask,
+                params=params,
+                training=False,
+            )
+            # logits shape: (n_actions,) — already masked
+            return jnp.argmax(logits)
         else:
-            # G_t = r_t + gamma * [(1 - lambda_) * V(s_{t+1}) + lambda_ * G_{t+1}]
-            g = reward + gamma * ((1.0 - lambda_) * v_next + lambda_ * g)
+            # CNN/TD path: vmap format_data over all successor states
+            all_obs = jax.vmap(lambda s: model.format_data(state=s))(all_next)
+            dummy_mask = jnp.ones((n_actions, env.num_actions), dtype=bool)
+            _, vals = model(all_obs, dummy_mask, params=params, training=False)
+            vals = vals.squeeze(-1)  # (n_actions,)
+            current_player = state.current_player
+            next_players = all_next.current_player  # (n_actions,)
+            # Negate value when perspective flips
+            vals = jnp.where(next_players != current_player, -vals, vals)
+            # Mask illegal actions to -inf
+            vals = jnp.where(state.legal_action_mask, vals, jnp.finfo(vals.dtype).min)
+            return jnp.argmax(vals)
  
-        lambda_returns[t] = g
+    def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree):
+        """
+        One episode via lax.while_loop. Returns:
+            obs     : (max_plies, *obs_shape)
+            rewards : (max_plies,)
+            dones   : (max_plies,)
+            length  : scalar int32
+        """
+        obs_buf     = jnp.zeros((max_plies, *obs_shape), dtype=jnp.float32)
+        rewards_buf = jnp.zeros((max_plies,),             dtype=jnp.float32)
+        dones_buf   = jnp.zeros((max_plies,),             dtype=bool)
  
-    return [(trajectory[t][0], lambda_returns[t]) for t in range(T)]
+        state = env.init(rng)
  
+        def cond(carry):
+            state, _, _, _, t = carry
+            return jnp.logical_and(~state.terminated, t < max_plies)
  
+        def body(carry):
+            state, obs_buf, rewards_buf, dones_buf, t = carry
+            obs = model.format_data(state=state).astype(jnp.float32)
+            action = _greedy_action(state, params)
+            next_state = env.step(state, action)
+            reward = next_state.rewards[state.current_player]
+            done = next_state.terminated
+ 
+            obs_buf     = obs_buf.at[t].set(obs)
+            rewards_buf = rewards_buf.at[t].set(reward)
+            dones_buf   = dones_buf.at[t].set(done)
+ 
+            return next_state, obs_buf, rewards_buf, dones_buf, t + 1
+ 
+        init = (state, obs_buf, rewards_buf, dones_buf, jnp.int32(0))
+        final_state, obs_buf, rewards_buf, dones_buf, length = jax.lax.while_loop(
+            cond, body, init
+        )
+        return obs_buf, rewards_buf, dones_buf, length
+ 
+    # vmap over a batch of episode keys; params are shared (not vmapped)
+    def collect_episodes(rng_keys: chex.PRNGKey, params: chex.ArrayTree):
+        return jax.vmap(lambda k: _single_episode(k, params))(rng_keys)
+ 
+    return jax.jit(collect_episodes)
+
+def make_compute_lambda_returns(model: ModelManager, gamma: float, lambda_: float):
+    """
+    Returns a JIT-compiled function that computes λ-returns for a batch of
+    episodes using lax.scan — no Python loops, no second forward pass beyond
+    the value estimates computed here.
+ 
+    Args:
+        obs     : (B, T, *obs_shape)
+        rewards : (B, T)
+        dones   : (B, T)
+        lengths : (B,)
+        params  : model parameters
+ 
+    Returns:
+        flat_obs     : (N, *obs_shape)  — only valid timesteps
+        flat_targets : (N,)
+        n_valid      : scalar, total valid transitions across batch
+    """
+    n_actions = model.board_size * model.board_size * 3
+ 
+    def _episode_returns(
+        obs: jnp.ndarray,      # (T, *obs_shape)
+        rewards: jnp.ndarray,  # (T,)
+        dones: jnp.ndarray,    # (T,)
+        v_next: jnp.ndarray,   # (T,)  — V(s_{t+1}), already computed
+    ) -> jnp.ndarray:
+        """Backward scan to compute G_t^λ for one episode."""
+ 
+        def scan_fn(g_next, t):
+            r, done, vn = rewards[t], dones[t], v_next[t]
+            g = jnp.where(
+                done,
+                r,
+                r + gamma * ((1.0 - lambda_) * vn + lambda_ * g_next),
+            )
+            return g, g
+ 
+        T = obs.shape[0]
+        _, returns = jax.lax.scan(
+            scan_fn,
+            init=jnp.float32(0.0),
+            xs=jnp.arange(T - 1, -1, -1, dtype=jnp.int32),
+        )
+        # scan_fn processes t=T-1 first; reverse to align with timestep order
+        return returns[::-1]
+ 
+    def compute_lambda_returns(
+        obs: jnp.ndarray,      # (B, T, *obs_shape)
+        rewards: jnp.ndarray,  # (B, T)
+        dones: jnp.ndarray,    # (B, T)
+        lengths: jnp.ndarray,  # (B,)
+        params: chex.ArrayTree,
+    ):
+        B, T = obs.shape[:2]
+        obs_flat = obs.reshape(B * T, *obs.shape[2:])
+        dummy_mask = jnp.ones((B * T, n_actions), dtype=bool)
+        _, v_all = model(obs_flat, dummy_mask, params=params, training=False)
+        v_all = v_all.reshape(B, T)  # (B, T) — V(s_t), used as V(s_{t+1}) shifted by 1
+ 
+        # Shift: v_next[t] = V(s_{t+1}); for the last step use 0
+        v_next = jnp.concatenate([v_all[:, 1:], jnp.zeros((B, 1))], axis=1)
+ 
+        # vmap episode return computation over batch
+        returns = jax.vmap(_episode_returns)(obs, rewards, dones, v_next)  # (B, T)
+ 
+        # Build validity mask: timestep t is valid iff t < length
+        timesteps = jnp.arange(T, dtype=jnp.int32)[None, :]   # (1, T)
+        valid = timesteps < lengths[:, None]                    # (B, T)
+ 
+        return obs_flat, returns.reshape(B * T), valid.reshape(B * T)
+ 
+    return jax.jit(compute_lambda_returns)
+
 def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTransformation):
-    """
-    Train step for TD(λ): fits V(s) directly to precomputed λ-returns.
+    n_actions = model.board_size * model.board_size * 3
  
-    The λ-returns are computed offline before this call, so the loss is a
-    simple MSE between the model's value prediction and the target.
-    No bootstrapping happens inside this function.
-    """
     def loss_fn(params, batch_stats, obs, targets):
-        n_actions = model.board_size * model.board_size * 3
         dummy_mask = jnp.ones((obs.shape[0], n_actions), dtype=bool)
- 
         (_, v), new_batch_stats = model(
             obs, dummy_mask,
             params={"params": params, "batch_stats": batch_stats},
@@ -218,41 +242,6 @@ def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTran
         return new_params, new_batch_stats, new_opt_state, loss
  
     return train_step
-
-# def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):
-#     def loss_fn(params, batch_stats, obs, next_obs, reward, done):
-#         n_actions = model.board_size * model.board_size * 3
-#         dummy_mask = jnp.ones((obs.shape[0], n_actions), dtype=bool)
-
-#         # training=True → returns ((logits, value), batch_stats)
-#         (_, v), new_batch_stats = model(
-#             obs, dummy_mask,
-#             params={"params": params, "batch_stats": batch_stats},
-#             training=True,
-#         )
-
-#         # training=False → returns (logits, value) directly, no batch_stats
-#         _, v_next = model(
-#             next_obs, dummy_mask,
-#             params={"params": params, "batch_stats": batch_stats},
-#             training=False,
-#         )
-
-#         v_next = jax.lax.stop_gradient(v_next)
-#         target = reward + gamma * v_next * (1.0 - done)
-#         loss = jnp.mean((v - target) ** 2)
-#         return loss, new_batch_stats
-
-#     @jax.jit
-#     def train_step(params, batch_stats, opt_state, obs, next_obs, reward, done):
-#         (loss, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
-#             params, batch_stats, obs, next_obs, reward, done
-#         )
-#         updates, new_opt_state = optimizer.update(grads, opt_state, params)
-#         new_params = optax.apply_updates(params, updates)
-#         return new_params, new_batch_stats, new_opt_state, loss
-
-#     return train_step
 
 
 def initialise_td_model(config: TDTrainConfig, run_name: str) -> tuple[ModelManager, chex.ArrayTree, chex.ArrayTree]:
@@ -421,6 +410,7 @@ def train_experiment(
     optimizer = optax.adam(config.learning_rate)
     resume_payload = None
     latest_checkpoint: str | None = None
+ 
     if resume and _resume_state_path(run_dir).is_file():
         resume_payload = _load_pickle(_resume_state_path(run_dir))
         _validate_resume_config(config, resume_payload)
@@ -432,7 +422,7 @@ def train_experiment(
             and int(existing_summary.get("final_iteration", 0)) >= config.num_iterations
         ):
             return existing_summary
-
+ 
     if resume_payload is not None:
         model = build_model_manager(
             model_id=run_name,
@@ -456,17 +446,10 @@ def train_experiment(
             if existing_summary is not None:
                 return existing_summary
             return _td_checkpoint_state(
-                run_dir=run_dir,
-                config=config,
-                run_name=run_name,
-                params=params,
-                batch_stats=batch_stats,
-                opt_state=opt_state,
-                rng=rng,
-                numpy_rng=numpy_rng,
-                metrics_rows=metrics_rows,
-                eval_rows=eval_rows,
-                completed_iterations=completed_iterations,
+                run_dir=run_dir, config=config, run_name=run_name,
+                params=params, batch_stats=batch_stats, opt_state=opt_state,
+                rng=rng, numpy_rng=numpy_rng, metrics_rows=metrics_rows,
+                eval_rows=eval_rows, completed_iterations=completed_iterations,
                 latest_checkpoint=latest_checkpoint,
                 final_checkpoint=resume_payload.get("final_checkpoint"),
                 status="completed",
@@ -479,12 +462,20 @@ def train_experiment(
         metrics_rows = []
         eval_rows = []
         completed_iterations = 0
-
+ 
+    # Build JIT-compiled kernels once, before the loop
+    collect_episodes = make_collect_episodes(env, model, config.max_plies)
+    compute_lambda_returns = make_compute_lambda_returns(
+        model, config.discount_factor, config.lambda_
+    )
     train_step = make_td_lambda_train_step(model, optimizer)
+ 
+    training_passes = getattr(config, "training_passes", 1)
+ 
     interrupted = False
     interrupt_signal = None
     final_checkpoint = checkpoints_dir / "final.pkl"
-
+ 
     with SignalCheckpointState() as signal_state:
         with Progress(
             TextColumn("[progress.description]{task.description}"),
@@ -493,43 +484,52 @@ def train_experiment(
             MofNCompleteColumn(),
             TimeElapsedColumn(),
         ) as progress:
-            task = progress.add_task(f"Training {run_name}", total=config.num_iterations, completed=completed_iterations)
-            batch_successors = make_batch_successors(env) 
+            task = progress.add_task(
+                f"Training {run_name}",
+                total=config.num_iterations,
+                completed=completed_iterations,
+            )
+ 
             for iteration in range(completed_iterations + 1, config.num_iterations + 1):
-                rng, *episode_keys = jax.random.split(rng, config.episodes_per_iteration + 1)
+                # --- Episode collection (fully on-device) ---
+                rng, episodes_rng = jax.random.split(rng)
+                episode_keys = jax.random.split(episodes_rng, config.episodes_per_iteration)
  
-                # Collect trajectories
-                all_samples = []  # list of (obs, lambda_return)
-                for ep_key in episode_keys:
-                    trajectory = td_selfplay_episode(
-                        env, params, batch_stats, model, ep_key, config.max_plies, batch_successors
-                    )
-                    # Compute λ-returns offline for this episode
-                    samples = compute_lambda_returns(
-                        trajectory,
-                        model=model,
-                        params=params,
-                        batch_stats=batch_stats,
-                        gamma=config.discount_factor,
-                        lambda_=config.lambda_,
-                    )
-                    all_samples.extend(samples)
- 
-                # Build training batch from (obs, lambda_return) pairs
-                obs     = jnp.array([s[0] for s in all_samples])
-                targets = jnp.array([s[1] for s in all_samples], dtype=jnp.float32)
- 
-                params, batch_stats, opt_state, loss = train_step(
-                    params, batch_stats, opt_state, obs, targets
+                obs_buf, rewards_buf, dones_buf, lengths = collect_episodes(
+                    episode_keys,
+                    {"params": params, "batch_stats": batch_stats},
                 )
+                # obs_buf    : (B, T, *obs_shape)
+                # rewards_buf: (B, T)
+                # dones_buf  : (B, T)
+                # lengths    : (B,)
+ 
+                # --- λ-return computation (on-device, no Python loop) ---
+                flat_obs, flat_targets, valid_mask = compute_lambda_returns(
+                    obs_buf, rewards_buf, dones_buf, lengths,
+                    {"params": params, "batch_stats": batch_stats},
+                )
+                # Keep only valid timesteps
+                flat_obs     = flat_obs[valid_mask]
+                flat_targets = flat_targets[valid_mask]
+                n_transitions = int(flat_obs.shape[0])
+ 
+                # --- Training (multiple passes over collected data) ---
+                total_loss = 0.0
+                for _ in range(training_passes):
+                    params, batch_stats, opt_state, loss = train_step(
+                        params, batch_stats, opt_state, flat_obs, flat_targets
+                    )
+                    total_loss += float(loss)
+                avg_loss = total_loss / training_passes
  
                 metrics_row = {
                     "iteration": iteration,
-                    "n_transitions": len(all_samples),
-                    "value_loss": float(loss),
+                    "n_transitions": n_transitions,
+                    "value_loss": avg_loss,
                 }
                 metrics_rows.append(metrics_row)
-
+ 
                 if iteration % config.checkpoint_interval == 0 or iteration == config.num_iterations:
                     checkpoint_path = checkpoints_dir / f"iter_{iteration:04d}.pkl"
                     save_checkpoint(
@@ -540,7 +540,7 @@ def train_experiment(
                         iteration=iteration,
                     )
                     latest_checkpoint = str(checkpoint_path)
-
+ 
                 if iteration % config.eval_interval == 0 or iteration == config.num_iterations:
                     eval_summary = evaluate_td_against_greedy(
                         env=env,
@@ -553,43 +553,33 @@ def train_experiment(
                     )
                     eval_row = {"iteration": iteration, **eval_summary}
                     eval_rows.append(eval_row)
-                    metrics_rows[-1].update(
-                        {
-                            "greedy_win_rate": eval_summary["win_rate"],
-                            "greedy_draw_rate": eval_summary["draw_rate"],
-                            "greedy_loss_rate": eval_summary["loss_rate"],
-                        }
-                    )
-
+                    metrics_rows[-1].update({
+                        "greedy_win_rate":  eval_summary["win_rate"],
+                        "greedy_draw_rate": eval_summary["draw_rate"],
+                        "greedy_loss_rate": eval_summary["loss_rate"],
+                    })
+ 
                 completed_iterations = iteration
                 progress.advance(task)
-
+ 
                 status = "running"
                 if signal_state.requested and completed_iterations < config.num_iterations:
                     interrupted = True
                     interrupt_signal = signal_state.signal_name
                     status = "interrupted"
-
+ 
                 _td_checkpoint_state(
-                    run_dir=run_dir,
-                    config=config,
-                    run_name=run_name,
-                    params=params,
-                    batch_stats=batch_stats,
-                    opt_state=opt_state,
-                    rng=rng,
-                    numpy_rng=numpy_rng,
-                    metrics_rows=metrics_rows,
-                    eval_rows=eval_rows,
-                    completed_iterations=completed_iterations,
+                    run_dir=run_dir, config=config, run_name=run_name,
+                    params=params, batch_stats=batch_stats, opt_state=opt_state,
+                    rng=rng, numpy_rng=numpy_rng, metrics_rows=metrics_rows,
+                    eval_rows=eval_rows, completed_iterations=completed_iterations,
                     latest_checkpoint=latest_checkpoint,
                     final_checkpoint=str(final_checkpoint) if final_checkpoint.is_file() else None,
-                    status=status,
-                    interrupt_signal=interrupt_signal,
+                    status=status, interrupt_signal=interrupt_signal,
                 )
                 if interrupted:
                     break
-
+ 
     if interrupted:
         return _read_json(_summary_path(run_dir)) or {
             "experiment_name": config.experiment_name,
@@ -597,7 +587,7 @@ def train_experiment(
             "status": "interrupted",
             "final_iteration": completed_iterations,
         }
-
+ 
     save_checkpoint(
         final_checkpoint,
         config=config.to_dict(),
@@ -607,17 +597,10 @@ def train_experiment(
     )
     latest_checkpoint = str(final_checkpoint)
     return _td_checkpoint_state(
-        run_dir=run_dir,
-        config=config,
-        run_name=run_name,
-        params=params,
-        batch_stats=batch_stats,
-        opt_state=opt_state,
-        rng=rng,
-        numpy_rng=numpy_rng,
-        metrics_rows=metrics_rows,
-        eval_rows=eval_rows,
-        completed_iterations=config.num_iterations,
+        run_dir=run_dir, config=config, run_name=run_name,
+        params=params, batch_stats=batch_stats, opt_state=opt_state,
+        rng=rng, numpy_rng=numpy_rng, metrics_rows=metrics_rows,
+        eval_rows=eval_rows, completed_iterations=config.num_iterations,
         latest_checkpoint=latest_checkpoint,
         final_checkpoint=str(final_checkpoint),
         status="completed",
