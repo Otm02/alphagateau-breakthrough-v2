@@ -50,26 +50,37 @@ class SignalCheckpointState:
         print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
 
 def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
+    max_legal_moves = env.board_size * env.board_size * 3  # upper bound on legal moves
     state = env.init(rng)
     trajectory = []
     n_plies = 0
     while not state.terminated and n_plies < max_plies:
         legal_moves = np.where(np.array(state.legal_action_mask))[0]
+        n_legal = len(legal_moves)
+
         next_states = [env.step(state, int(a)) for a in legal_moves]
-        obs_batch = jnp.concatenate(
-            [model.format_data(state=ns) for ns in next_states], axis=0
-        )
-        lam_batch = jnp.stack(
-            [ns.legal_action_mask for ns in next_states], axis=0
-        )
+        obs_list = [model.format_data(state=ns) for ns in next_states]
+
+        # pad to fixed size to avoid JAX recompilation
+        obs_single_shape = obs_list[0].shape  # (1, H, W, C)
+        pad_count = max_legal_moves - n_legal
+        padding = [jnp.zeros_like(obs_list[0])] * pad_count
+        obs_batch = jnp.concatenate(obs_list + padding, axis=0)  # (max_legal_moves, H, W, C)
+
+        lam_list = [ns.legal_action_mask for ns in next_states]
+        lam_padding = [jnp.zeros_like(lam_list[0])] * pad_count
+        lam_batch = jnp.stack(lam_list + lam_padding, axis=0)  # (max_legal_moves, n_actions)
+
         _, vals = model(
             obs_batch, lam_batch,
             params={"params": params, "batch_stats": batch_stats},
         )
-        vals = np.array(vals)
+        vals = np.array(vals[:n_legal])  # only take real moves, discard padding
+
         for i, ns in enumerate(next_states):
             if ns.current_player != state.current_player:
                 vals[i] = -vals[i]
+
         best_action = int(legal_moves[np.argmax(vals)])
         next_state = env.step(state, best_action)
         obs_cur = np.array(model.format_data(state=state))
