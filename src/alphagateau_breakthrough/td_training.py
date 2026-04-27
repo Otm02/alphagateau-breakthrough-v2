@@ -14,7 +14,7 @@ import optax
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TaskProgressColumn, TextColumn, TimeElapsedColumn
 
 from .configs import TDTrainConfig
-from .env import BreakthroughEnv
+from .env import BreakthroughEnv, BreakthroughState
 from .evaluation import evaluate_td_against_greedy
 from .models import ModelManager, build_model_manager, load_checkpoint, save_checkpoint
 from .utils import ensure_dir, write_csv, write_json, write_jsonl
@@ -49,49 +49,85 @@ class SignalCheckpointState:
                 self.signal_name = str(signum)
         print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
 
-def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies):
-    max_legal_moves = env.board_size * env.board_size * 3  # upper bound on legal moves
+def make_batch_successors(env):
+    """
+    Returns a JIT-compiled function that steps ALL possible actions from a state
+    in a single vmapped GPU call. Shape is always (num_actions,) so JAX compiles once.
+    Illegal actions are handled gracefully by env.step (returns same state).
+    """
+    all_actions = jnp.arange(env.num_actions, dtype=jnp.int32)
+ 
+    @jax.jit
+    def batch_successors(state: BreakthroughState) -> BreakthroughState:
+        return jax.vmap(lambda a: env.step(state, a))(all_actions)
+ 
+    return batch_successors
+ 
+ 
+def td_selfplay_episode(env, params, batch_stats, model, rng, max_plies, batch_successors):
+    """
+    One self-play episode for TD training.
+ 
+    Uses a vmapped env.step over all actions at once (fixed shape = num_actions),
+    so JAX compiles batch_successors exactly once for the lifetime of the run.
+ 
+    Per-ply cost: 1 vmapped env.step (GPU) + 1 batched model forward pass (GPU).
+    No Python loop over legal moves.
+    """
     state = env.init(rng)
     trajectory = []
     n_plies = 0
+ 
     while not state.terminated and n_plies < max_plies:
-        legal_moves = np.where(np.array(state.legal_action_mask))[0]
-        n_legal = len(legal_moves)
-
-        next_states = [env.step(state, int(a)) for a in legal_moves]
-        obs_list = [model.format_data(state=ns) for ns in next_states]
-
-        # pad to fixed size to avoid JAX recompilation
-        obs_single_shape = obs_list[0].shape  # (1, H, W, C)
-        pad_count = max_legal_moves - n_legal
-        padding = [jnp.zeros_like(obs_list[0])] * pad_count
-        obs_batch = jnp.concatenate(obs_list + padding, axis=0)  # (max_legal_moves, H, W, C)
-
-        lam_list = [ns.legal_action_mask for ns in next_states]
-        lam_padding = [jnp.zeros_like(lam_list[0])] * pad_count
-        lam_batch = jnp.stack(lam_list + lam_padding, axis=0)  # (max_legal_moves, n_actions)
-
+        legal_mask = np.array(state.legal_action_mask)          # (num_actions,)
+        legal_indices = np.where(legal_mask)[0]                  # variable length, CPU only
+        current_player = int(state.current_player)
+ 
+        # Single vmapped call over ALL actions — fixed shape, no recompilation
+        all_next_states = batch_successors(state)               # BreakthroughState with leading dim num_actions
+ 
+        # Gather only the legal successor observations
+        obs_list = []
+        lam_list = []
+        for i in legal_indices:
+            ns_i = jax.tree_util.tree_map(lambda x: x[i], all_next_states)
+            obs_list.append(model.format_data(state=ns_i))
+            lam_list.append(ns_i.legal_action_mask)
+ 
+        obs_batch = jnp.concatenate(obs_list, axis=0)           # (n_legal, *obs_shape)
+        lam_batch = jnp.stack(lam_list, axis=0)                 # (n_legal, num_actions)
+ 
+        # Single batched forward pass for all legal successors
         _, vals = model(
             obs_batch, lam_batch,
             params={"params": params, "batch_stats": batch_stats},
         )
-        vals = np.array(vals[:n_legal])  # only take real moves, discard padding
-
-        for i, ns in enumerate(next_states):
-            if ns.current_player != state.current_player:
-                vals[i] = -vals[i]
-
-        best_action = int(legal_moves[np.argmax(vals)])
+        vals = np.array(vals)                                    # (n_legal,)
+ 
+        # Flip value sign for successors where the opponent is now to move
+        next_players = np.array(all_next_states.current_player)  # pull once, shape (num_actions,)
+        for k, i in enumerate(legal_indices):
+            if next_players[i] != current_player:
+                vals[k] = -vals[k]
+ 
+        best_k = int(np.argmax(vals))
+        best_action = int(legal_indices[best_k])
+ 
+        # One final step for the chosen action to get the authoritative next state
         next_state = env.step(state, best_action)
+ 
         obs_cur = np.array(model.format_data(state=state))
         obs_nxt = np.array(model.format_data(state=next_state))
         trajectory.append((
-            obs_cur, obs_nxt,
-            float(next_state.rewards[state.current_player]),
+            obs_cur,
+            obs_nxt,
+            float(next_state.rewards[current_player]),
             float(next_state.terminated),
         ))
+ 
         state = next_state
         n_plies += 1
+ 
     return trajectory
 
 def make_td_train_step(model: ModelManager, optimizer: optax.GradientTransformation, gamma: float):
@@ -369,12 +405,13 @@ def train_experiment(
             TimeElapsedColumn(),
         ) as progress:
             task = progress.add_task(f"Training {run_name}", total=config.num_iterations, completed=completed_iterations)
+            batch_successors = make_batch_successors(env) 
             for iteration in range(completed_iterations + 1, config.num_iterations + 1):
                 rng, *episode_keys = jax.random.split(rng, config.episodes_per_iteration + 1)
                 all_transitions = []
                 for ep_key in episode_keys:
                     trajectory = td_selfplay_episode(
-                        env, params, batch_stats, model, ep_key, config.max_plies
+                        env, params, batch_stats, model, ep_key, config.max_plies, batch_successors
                     )
                     all_transitions.extend(trajectory)
 
