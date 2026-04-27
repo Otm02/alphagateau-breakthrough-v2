@@ -46,28 +46,22 @@ In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
 
 \section{Introduction}
 
-Breakthrough is an abstract strategy board game that is played on an 8x8 board.
-It can also be played on smaller board sizes and the smaller variations have been solved.
-Specifically, 6x6 first player win, 6x5 second player win, 5x5 second player win, 3x7 second player win.
-Figure \ref{fig:rules} shows the starting position and the legal forward and diagonal moves that define the game. Only pieces are pawns.
-It is a chess variant with very large state space, $1.5\times 10^{16}$ \cite{jonsson2025solving}.
 
-Such a game is perfect for our specific exploration of Graph Neural Network Archetecutre in the context of reinforcement-learning.
-Its rules are simple but tactics are strongly shaped by local geometry: pieces only move forward, captures are diagonal, and
-promotion to the opponent's back rank ends the game.
-That structure makes the game a natural candidate for graph-based state representations, where
-squares are nodes and directional moves are edges, rather than for purely image-like encodings.
+Breakthrough is a two-player abstract strategy game played on an $8\times8$ board in which each side controls only pawns.
+Despite its simple rules, the game is strategically rich and has a large state space of approximately $1.5\times 10^{16}$ \cite{jonsson2025solving}.
+Figure~\ref{fig:rules} illustrates the starting position and the legal forward and diagonal-capture moves that define the game.
 
-% TODO: review at the end.
-Our project addresses two questions.
-First, does an AlphaGateau-style GNN outperform a simpler CNN baseline on 8$\times$8 Breakthrough
-under a course-feasible self-play budget?
-Second, does the GNN's board-size-invariant representation make 5$\times$5~$\rightarrow$~8$\times$8
-transfer meaningful and useful?
-To answer both questions, we built a complete project pipeline: a JAX Breakthrough environment,
-graph construction, MCTS self-play, checkpointing with resume support, evaluation, figure
-generation, and Slurm orchestration for the McGill course cluster.
-We report a negative result on the first question and a qualified positive result on the second.
+Breakthrough is a useful testbed for studying learned representations in reinforcement learning.
+Its rules are simple, but successful play depends heavily on local geometry: pieces move only forward, captures are diagonal, and reaching the opponent's back rank ends the game.
+This structure makes the game a natural candidate for graph-based representations, in which squares are nodes and legal relations are edges rather than purely image-like grid encodings.
+It is especially attractive for transfer experiments because the same local move rules apply across board sizes.
+
+Our project studies two questions.
+First, under a fixed self-play training budget, does an AlphaGateau-style graph neural network (GNN) outperform a simpler convolutional neural network (CNN) baseline on 8$\times$8 Breakthrough?
+Second, does the GNN's board-size-invariant representation make transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning meaningful?
+To answer these questions, we built a JAX-based self-play training and evaluation pipeline for Breakthrough and compared graph and convolutional agents under matched settings.
+Our main findings are that the CNN baseline outperforms the GNN from scratch on 8$\times$8, while 5$\times$5 pretraining gives the GNN a clear early advantage during transfer without closing the full gap to the
+CNN.
 
 \begin{figure}[t]
   \centering
