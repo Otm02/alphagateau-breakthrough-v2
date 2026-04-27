@@ -93,7 +93,6 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
             all_obs = jax.vmap(lambda s: model.format_data(state=s))(all_next)
             dummy_mask = jnp.ones((n_actions, env.num_actions), dtype=bool)
             _, vals = model(all_obs, dummy_mask, params=params, training=False)
-            vals = vals.squeeze(-1)  # (n_actions,)
             current_player = state.current_player
             next_players = all_next.current_player  # (n_actions,)
             # Negate value when perspective flips
@@ -222,25 +221,25 @@ def make_compute_lambda_returns(model: ModelManager, gamma: float, lambda_: floa
 def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTransformation):
     n_actions = model.board_size * model.board_size * 3
  
-    def loss_fn(params, batch_stats, obs, targets):
+    def loss_fn(params, batch_stats, obs, targets, valid_mask):
         dummy_mask = jnp.ones((obs.shape[0], n_actions), dtype=bool)
         (_, v), new_batch_stats = model(
             obs, dummy_mask,
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
-        loss = jnp.mean((v - targets) ** 2)
+        loss = jnp.sum(((v - targets) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
         return loss, new_batch_stats
- 
+
     @jax.jit
-    def train_step(params, batch_stats, opt_state, obs, targets):
+    def train_step(params, batch_stats, opt_state, obs, targets, valid_mask):
         (loss, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
-            params, batch_stats, obs, targets
+            params, batch_stats, obs, targets, valid_mask
         )
         updates, new_opt_state = optimizer.update(grads, opt_state, params)
         new_params = optax.apply_updates(params, updates)
         return new_params, new_batch_stats, new_opt_state, loss
- 
+    
     return train_step
 
 
@@ -510,15 +509,13 @@ def train_experiment(
                     {"params": params, "batch_stats": batch_stats},
                 )
                 # Keep only valid timesteps
-                flat_obs     = flat_obs[valid_mask]
-                flat_targets = flat_targets[valid_mask]
-                n_transitions = int(flat_obs.shape[0])
+                n_transitions = int(valid_mask.sum())
  
                 # --- Training (multiple passes over collected data) ---
                 total_loss = 0.0
                 for _ in range(training_passes):
                     params, batch_stats, opt_state, loss = train_step(
-                        params, batch_stats, opt_state, flat_obs, flat_targets
+                        params, batch_stats, opt_state, flat_obs, flat_targets, valid_mask
                     )
                     total_loss += float(loss)
                 avg_loss = total_loss / training_passes
