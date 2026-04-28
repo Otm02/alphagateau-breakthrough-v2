@@ -2,8 +2,6 @@
 #SBATCH --partition=all
 # Set SLURM_ACCOUNT and SLURM_QOS in your environment or pass --account / --qos to sbatch.
 # Example for McGill COMP-579: --account=winter2026-comp579 --qos=comp579-1gpu-12h
-#SBATCH --account=winter2026-comp579
-#SBATCH --qos=comp579-1gpu-12h
 #SBATCH --gres=gpu:1
 #SBATCH --mem=16G
 #SBATCH --account=winter2026-comp579
