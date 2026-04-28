@@ -120,7 +120,7 @@ if [[ -n "${EVAL_GAMES:-}" ]]; then
 fi
 
 p2_cmd+=(--export="$p2_env")
-p2_cmd+=("$REPO_ROOT/scripts/extended_transfer_stage_p2.sbatch")
+p2_cmd+=("$REPO_ROOT/slurm/extended_transfer_stage_p2.sbatch")
 
 printf 'Submitting Part 2:'
 printf ' %q' "${p2_cmd[@]}"
