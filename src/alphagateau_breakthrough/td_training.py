@@ -271,7 +271,7 @@ def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTran
             training=True,
         )
         targets_clipped = jnp.clip(targets, -1.0, 1.0)
-        loss = jnp.sum(((v - targets_clipped) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
+        loss = jnp.sum(((v - targets) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
         return loss, new_batch_stats
 
     @jax.jit

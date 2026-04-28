@@ -256,7 +256,8 @@ class TDValueNet(nn.Module):
         value = nn.Dense(1)(value)
         batch_size = value.shape[0]
         dummy_logits = jnp.zeros((batch_size, self.board_size * self.board_size * 3))
-        return dummy_logits, value.reshape((-1,))
+        value = nn.Dense(1)(value)
+        return dummy_logits, jnp.tanh(value).reshape((-1,))
     
 class ModelManager(NamedTuple):
     id: str

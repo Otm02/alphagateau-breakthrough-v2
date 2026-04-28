@@ -125,7 +125,7 @@ class TDTrainConfig:
     model_type: str
     hidden_size: int = 64
     n_res_layers: int = 4
-    learning_rate: float = 1e-2
+    learning_rate: float = 1e-3
     discount_factor: float = 1.0
     num_iterations: int = 40
     episodes_per_iteration: int = 64
@@ -150,8 +150,8 @@ TD_PRESETS = {
         seed=42,
         max_plies=96,
         episodes_per_iteration=128,
-        discount_factor=1.0,
-        lambda_=0.995,
+        discount_factor=0.99,
+        lambda_=0.7,
     ),
     "td_8x8_scratch": TDTrainConfig(
         model_type="td",
