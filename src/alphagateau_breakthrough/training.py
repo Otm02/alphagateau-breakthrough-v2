@@ -321,9 +321,12 @@ def _validate_resume_config(config: TrainConfig, resume_payload: dict) -> None:
 
 def build_optimizer(config: TrainConfig) -> optax.GradientTransformation:
     if config.lr_schedule == "cosine":
+        estimated_updates = (
+            config.replay_window // config.batch_size
+        ) * config.training_passes
         schedule = optax.cosine_decay_schedule(
             init_value=config.learning_rate,
-            decay_steps=config.num_iterations,
+            decay_steps = config.num_iterations * estimated_updates,
         )
     elif config.lr_schedule == "step":
         schedule = optax.piecewise_constant_schedule(
