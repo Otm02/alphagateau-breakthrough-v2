@@ -58,7 +58,7 @@ class SignalCheckpointState:
 # JAX-native episode collection
 # ---------------------------------------------------------------------------
 
-def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: int):
+def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: int, epsilon: float=0.3):
     """
     Returns a JIT-compiled function that collects a batch of self-play episodes
     entirely on-device using lax.while_loop + vmap.
@@ -91,8 +91,16 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
             jnp.not_equal(all_next.current_player, state.current_player), -vals, vals
         )
         vals = jnp.where(state.legal_action_mask, vals, jnp.finfo(vals.dtype).min)
-        gumbel_noise = jax.random.gumbel(rng, shape=vals.shape) * 0.5
-        return jnp.argmax(vals + gumbel_noise)
+
+        rng, eps_rng, rand_rng = jax.random.split(rng, 3)
+        greedy_action = jnp.argmax(vals)
+
+        # random legal action
+        legal_mask = state.legal_action_mask.astype(jnp.float32)
+        rand_action = jax.random.choice(rand_rng, n_actions, p=legal_mask / legal_mask.sum())
+
+        use_random = jax.random.uniform(eps_rng) < epsilon
+        return jnp.where(use_random, rand_action, greedy_action)
 
     def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree):
         obs_buf     = jnp.zeros((max_plies, *obs_shape), dtype=jnp.float32)

@@ -137,6 +137,7 @@ class TDTrainConfig:
     initial_checkpoint: str | None = None
     max_plies: int = 256
     training_passes: int = 1
+    exploration_epsilon: float = 0.3
 
     def to_dict(self) -> dict:
         return asdict(self)
