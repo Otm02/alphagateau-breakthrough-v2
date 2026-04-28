@@ -4,14 +4,23 @@
   "board_size": 5,
   "model_type": "gnn",
   "final_checkpoint": null,
-  "final_iteration": 2,
+  "final_iteration": 14,
   "target_iterations": 40,
   "status": "running",
   "resume_state": "artifacts/experiments/gnn_5x5_pretrain_cosine/latest_resume.pkl",
   "final_metrics": {
-    "iteration": 2,
-    "replay_size": 24576,
-    "policy_loss": 2.259662848431617,
-    "value_loss": 0.3829861949197948
+    "iteration": 14,
+    "replay_size": 50000,
+    "policy_loss": 1.5040552965275915,
+    "value_loss": 0.31402864119231166
+  },
+  "latest_eval": {
+    "iteration": 10,
+    "wins": 10,
+    "draws": 0,
+    "losses": 2,
+    "win_rate": 0.8333333333333334,
+    "draw_rate": 0.0,
+    "loss_rate": 0.16666666666666666
   }
 }
