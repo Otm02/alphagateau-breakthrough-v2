@@ -1,0 +1,17 @@
+{
+  "experiment_name": "gnn_5x5_pretrain_cosine",
+  "run_name": "gnn_5x5_pretrain_cosine",
+  "board_size": 5,
+  "model_type": "gnn",
+  "final_checkpoint": null,
+  "final_iteration": 2,
+  "target_iterations": 40,
+  "status": "running",
+  "resume_state": "artifacts/experiments/gnn_5x5_pretrain_cosine/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 2,
+    "replay_size": 24576,
+    "policy_loss": 2.259662848431617,
+    "value_loss": 0.3829861949197948
+  }
+}

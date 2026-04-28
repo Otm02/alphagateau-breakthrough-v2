@@ -1,0 +1,15 @@
+{
+  "experiment_name": "gnn_5x5_pretrain_cosine",
+  "run_name": "gnn_5x5_pretrain_cosine",
+  "board_size": 5,
+  "model_type": "gnn",
+  "target_iterations": 40,
+  "completed_iterations": 2,
+  "remaining_iterations": 38,
+  "status": "running",
+  "is_complete": false,
+  "interrupt_signal": null,
+  "latest_checkpoint": null,
+  "final_checkpoint": null,
+  "resume_state": "artifacts/experiments/gnn_5x5_pretrain_cosine/latest_resume.pkl"
+}
