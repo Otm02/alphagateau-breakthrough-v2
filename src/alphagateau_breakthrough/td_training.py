@@ -78,13 +78,13 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
     """
     n_actions = env.num_actions
     dummy_state = env.init(jax.random.PRNGKey(0))
-    obs_shape = model.format_data(state=dummy_state).shape
+    obs_shape = model.format_data(state=dummy_state).squeeze(0).shape
 
     def _greedy_action(state: BreakthroughState, params: chex.ArrayTree, rng: chex.PRNGKey) -> jnp.ndarray:
         all_next = jax.vmap(lambda a: env.step(state, a))(
             jnp.arange(n_actions, dtype=jnp.int32)
         )
-        all_obs = jax.vmap(lambda s: model.format_data(state=s))(all_next)
+        all_obs = jax.vmap(lambda s: model.format_data(state=s).squeeze(0))(all_next)
         dummy_mask = jnp.ones((n_actions, n_actions), dtype=bool)
         _, vals = model(all_obs, dummy_mask, params=params, training=False)
         vals = jnp.where(
@@ -115,7 +115,7 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         def body(carry):
             state, obs_buf, rewards_buf, dones_buf, flips_buf, t, rng = carry
             rng, action_rng = jax.random.split(rng)
-            obs    = model.format_data(state=state).astype(jnp.float32)
+            obs = model.format_data(state=state).squeeze(0).astype(jnp.float32)
             action = _greedy_action(state, params, action_rng)
             next_state = env.step(state, action)
 
