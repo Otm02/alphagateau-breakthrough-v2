@@ -121,13 +121,15 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
             action = _greedy_action(state, params, action_rng)
             next_state = env.step(state, action)
 
-            # Reward to the player who just moved
-            reward = next_state.rewards[state.current_player]
+            reward = next_state.rewards[jnp.int32(state.current_player)]
             done   = next_state.terminated
 
             # Did the active player change? (always True in Breakthrough except
             # at terminal, but we record it explicitly for correctness)
-            flip = jnp.not_equal(next_state.current_player, state.current_player)
+            flip = jnp.not_equal(
+                jnp.int32(next_state.current_player), 
+                jnp.int32(state.current_player)
+            )
 
             obs_buf     = obs_buf.at[t].set(obs)
             rewards_buf = rewards_buf.at[t].set(reward)
