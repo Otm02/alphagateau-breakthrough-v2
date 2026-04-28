@@ -4,7 +4,6 @@ import pickle
 import signal
 from dataclasses import replace
 from pathlib import Path
-from typing import NamedTuple
 
 import chex
 import jax
@@ -21,6 +20,11 @@ from .utils import ensure_dir, write_csv, write_json, write_jsonl
 
 RESUME_STATE_NAME = "latest_resume.pkl"
 STATUS_NAME = "status.json"
+
+
+# ---------------------------------------------------------------------------
+# Signal handling (unchanged)
+# ---------------------------------------------------------------------------
 
 class SignalCheckpointState:
     def __init__(self) -> None:
@@ -50,177 +54,222 @@ class SignalCheckpointState:
         print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
 
 
+# ---------------------------------------------------------------------------
+# JAX-native episode collection
+# ---------------------------------------------------------------------------
+
 def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: int):
     """
     Returns a JIT-compiled function that collects a batch of self-play episodes
     entirely on-device using lax.while_loop + vmap.
- 
+
+    All observations are stored from the perspective of the player who is about
+    to move (i.e. state.current_player at time t). The `flips` buffer records
+    whether the player changes after each transition — used by
+    make_compute_lambda_returns to negate bootstrapped values when the
+    perspective switches.
+
     Returns:
-        obs        : (n_episodes, max_plies, *obs_shape)   float32
-        rewards    : (n_episodes, max_plies)                float32
-        dones      : (n_episodes, max_plies)                bool
-        lengths    : (n_episodes,)                          int32   — actual ply count
+        obs     : (B, T, *obs_shape)  float32  — obs at time t, current player's view
+        rewards : (B, T)              float32  — reward to current_player after move t
+        dones   : (B, T)              bool
+        flips   : (B, T)              bool     — True when next_player != current_player
+        lengths : (B,)                int32    — actual ply count per episode
     """
     n_actions = env.num_actions
-    # Dummy state to infer obs shape
     dummy_state = env.init(jax.random.PRNGKey(0))
-    obs_shape = model.format_data(state=dummy_state).shape  # (*obs_shape,)
- 
+    obs_shape = model.format_data(state=dummy_state).shape
+
     def _greedy_action(state: BreakthroughState, params: chex.ArrayTree) -> jnp.ndarray:
         """Pick the action with highest value among legal successors."""
-        all_actions = jnp.arange(n_actions, dtype=jnp.int32)
-        all_next = jax.vmap(lambda a: env.step(state, a))(all_actions)
- 
-        # Format observations for all successors at once
-        # use_graph=False path: stack observations directly
-        # use_graph=True  path: not amenable to simple vmap obs stacking,
-        #                       so we fall back to value-from-logits trick below.
+        all_next = jax.vmap(lambda a: env.step(state, a))(
+            jnp.arange(n_actions, dtype=jnp.int32)
+        )
         if model.use_graph:
-            # For GNN models: score each legal action via the policy logits of
-            # the *current* state (cheaper than vmapping graph construction).
+            # GNN: score via policy logits of the current state
             obs_cur = model.format_data(state=state)
-            # obs_cur is a BreakthroughGraphsTuple — call model with a batch of 1
             logits, _ = model(
                 obs_cur,
                 state.legal_action_mask,
                 params=params,
                 training=False,
             )
-            # logits shape: (n_actions,) — already masked
             return jnp.argmax(logits)
         else:
-            # CNN/TD path: vmap format_data over all successor states
+            # CNN/TD: evaluate each successor state
             all_obs = jax.vmap(lambda s: model.format_data(state=s))(all_next)
-            dummy_mask = jnp.ones((n_actions, env.num_actions), dtype=bool)
+            dummy_mask = jnp.ones((n_actions, n_actions), dtype=bool)
             _, vals = model(all_obs, dummy_mask, params=params, training=False)
-            current_player = state.current_player
-            next_players = all_next.current_player  # (n_actions,)
-            # Negate value when perspective flips
-            vals = jnp.where(next_players != current_player, -vals, vals)
-            # Mask illegal actions to -inf
-            vals = jnp.where(state.legal_action_mask, vals, jnp.finfo(vals.dtype).min)
+            # vals shape: (n_actions,) — no squeeze needed for TDValueNet
+            # Negate value when perspective flips to opponent
+            vals = jnp.where(
+                all_next.current_player != state.current_player, -vals, vals
+            )
+            # Mask illegal actions
+            vals = jnp.where(
+                state.legal_action_mask, vals, jnp.finfo(vals.dtype).min
+            )
             return jnp.argmax(vals)
- 
+
     def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree):
-        """
-        One episode via lax.while_loop. Returns:
-            obs     : (max_plies, *obs_shape)
-            rewards : (max_plies,)
-            dones   : (max_plies,)
-            length  : scalar int32
-        """
         obs_buf     = jnp.zeros((max_plies, *obs_shape), dtype=jnp.float32)
         rewards_buf = jnp.zeros((max_plies,),             dtype=jnp.float32)
         dones_buf   = jnp.zeros((max_plies,),             dtype=bool)
- 
+        flips_buf   = jnp.zeros((max_plies,),             dtype=bool)
+
         state = env.init(rng)
- 
+
         def cond(carry):
-            state, _, _, _, t = carry
+            state, _, _, _, _, t = carry
             return jnp.logical_and(~state.terminated, t < max_plies)
- 
+
         def body(carry):
-            state, obs_buf, rewards_buf, dones_buf, t = carry
-            obs = model.format_data(state=state).astype(jnp.float32)
-            action = _greedy_action(state, params)
+            state, obs_buf, rewards_buf, dones_buf, flips_buf, t = carry
+
+            obs        = model.format_data(state=state).astype(jnp.float32)
+            action     = _greedy_action(state, params)
             next_state = env.step(state, action)
+
+            # Reward to the player who just moved
             reward = next_state.rewards[state.current_player]
-            done = next_state.terminated
- 
+            done   = next_state.terminated
+
+            # Did the active player change? (always True in Breakthrough except
+            # at terminal, but we record it explicitly for correctness)
+            flip = next_state.current_player != state.current_player
+
             obs_buf     = obs_buf.at[t].set(obs)
             rewards_buf = rewards_buf.at[t].set(reward)
             dones_buf   = dones_buf.at[t].set(done)
- 
-            return next_state, obs_buf, rewards_buf, dones_buf, t + 1
- 
-        init = (state, obs_buf, rewards_buf, dones_buf, jnp.int32(0))
-        final_state, obs_buf, rewards_buf, dones_buf, length = jax.lax.while_loop(
+            flips_buf   = flips_buf.at[t].set(flip)
+
+            return next_state, obs_buf, rewards_buf, dones_buf, flips_buf, t + 1
+
+        init = (state, obs_buf, rewards_buf, dones_buf, flips_buf, jnp.int32(0))
+        _, obs_buf, rewards_buf, dones_buf, flips_buf, length = jax.lax.while_loop(
             cond, body, init
         )
-        return obs_buf, rewards_buf, dones_buf, length
- 
-    # vmap over a batch of episode keys; params are shared (not vmapped)
+        return obs_buf, rewards_buf, dones_buf, flips_buf, length
+
     def collect_episodes(rng_keys: chex.PRNGKey, params: chex.ArrayTree):
         return jax.vmap(lambda k: _single_episode(k, params))(rng_keys)
- 
+
     return jax.jit(collect_episodes)
+
+
+# ---------------------------------------------------------------------------
+# λ-return computation with perspective correction
+# ---------------------------------------------------------------------------
 
 def make_compute_lambda_returns(model: ModelManager, gamma: float, lambda_: float):
     """
     Returns a JIT-compiled function that computes λ-returns for a batch of
-    episodes using lax.scan — no Python loops, no second forward pass beyond
-    the value estimates computed here.
- 
+    episodes using lax.scan, correctly handling perspective switches.
+
+    The key invariant: all values and returns are always expressed from the
+    perspective of the player who acted at time t (i.e. state.current_player
+    at time t). When the active player changes between t and t+1 (flip=True),
+    V(s_{t+1}) must be negated before bootstrapping, because the stored value
+    for t+1 is from the opponent's perspective.
+
     Args:
         obs     : (B, T, *obs_shape)
         rewards : (B, T)
         dones   : (B, T)
+        flips   : (B, T)   — True when player changes after step t
         lengths : (B,)
         params  : model parameters
- 
+
     Returns:
-        flat_obs     : (N, *obs_shape)  — only valid timesteps
-        flat_targets : (N,)
-        n_valid      : scalar, total valid transitions across batch
+        flat_obs     : (B*T, *obs_shape)
+        flat_targets : (B*T,)
+        valid_mask   : (B*T,)  bool — True for timesteps within episode length
     """
     n_actions = model.board_size * model.board_size * 3
- 
+
     def _episode_returns(
         obs: jnp.ndarray,      # (T, *obs_shape)
         rewards: jnp.ndarray,  # (T,)
         dones: jnp.ndarray,    # (T,)
-        v_next: jnp.ndarray,   # (T,)  — V(s_{t+1}), already computed
+        v_next: jnp.ndarray,   # (T,)  — V(s_{t+1}) in s_{t+1}'s player's frame
+        flips: jnp.ndarray,    # (T,)  — True when player changes at step t
     ) -> jnp.ndarray:
-        """Backward scan to compute G_t^λ for one episode."""
- 
+        """
+        Backward scan to compute G_t^λ for one episode.
+
+        At each step t:
+          - v_next[t] is the model's value estimate for s_{t+1}, expressed
+            from the perspective of whoever is the current player at t+1.
+          - If flips[t] is True, the perspective has switched, so we negate
+            v_next[t] to bring it into the frame of the player at t.
+          - G_t = r_t + gamma * [(1-lambda)*V(s_{t+1}) + lambda*G_{t+1}]
+            where both V and G_{t+1} are in the frame of the player at t.
+        """
         def scan_fn(g_next, t):
-            r, done, vn = rewards[t], dones[t], v_next[t]
+            r    = rewards[t]
+            done = dones[t]
+            vn   = v_next[t]
+            flip = flips[t]
+
+            # Bring v_next into current player's frame
+            vn_corrected = jnp.where(flip, -vn, vn)
+
             g = jnp.where(
                 done,
                 r,
-                r + gamma * ((1.0 - lambda_) * vn + lambda_ * g_next),
+                r + gamma * ((1.0 - lambda_) * vn_corrected + lambda_ * g_next),
             )
             return g, g
- 
-        T = obs.shape[0]
+
+        T = rewards.shape[0]
         _, returns = jax.lax.scan(
             scan_fn,
             init=jnp.float32(0.0),
             xs=jnp.arange(T - 1, -1, -1, dtype=jnp.int32),
         )
-        # scan_fn processes t=T-1 first; reverse to align with timestep order
-        return returns[::-1]
- 
+        return returns[::-1]  # reverse: scan processed T-1 first
+
     def compute_lambda_returns(
         obs: jnp.ndarray,      # (B, T, *obs_shape)
         rewards: jnp.ndarray,  # (B, T)
         dones: jnp.ndarray,    # (B, T)
+        flips: jnp.ndarray,    # (B, T)
         lengths: jnp.ndarray,  # (B,)
         params: chex.ArrayTree,
     ):
         B, T = obs.shape[:2]
-        obs_flat = obs.reshape(B * T, *obs.shape[2:])
+        obs_flat   = obs.reshape(B * T, *obs.shape[2:])
         dummy_mask = jnp.ones((B * T, n_actions), dtype=bool)
+
+        # One batched forward pass to get V(s_t) for all t
         _, v_all = model(obs_flat, dummy_mask, params=params, training=False)
-        v_all = v_all.reshape(B, T)  # (B, T) — V(s_t), used as V(s_{t+1}) shifted by 1
- 
-        # Shift: v_next[t] = V(s_{t+1}); for the last step use 0
+        v_all = v_all.reshape(B, T)  # (B, T)
+
+        # v_next[t] = V(s_{t+1}): shift left by 1, pad last column with 0
+        # v_all[:, t] is in the frame of whoever acts at time t.
+        # After shifting, v_next[:, t] is in the frame of whoever acts at t+1,
+        # which is why we need flips to correct perspective in _episode_returns.
         v_next = jnp.concatenate([v_all[:, 1:], jnp.zeros((B, 1))], axis=1)
- 
-        # vmap episode return computation over batch
-        returns = jax.vmap(_episode_returns)(obs, rewards, dones, v_next)  # (B, T)
- 
-        # Build validity mask: timestep t is valid iff t < length
-        timesteps = jnp.arange(T, dtype=jnp.int32)[None, :]   # (1, T)
-        valid = timesteps < lengths[:, None]                    # (B, T)
- 
+
+        # Compute λ-returns for all episodes in parallel
+        returns = jax.vmap(_episode_returns)(obs, rewards, dones, v_next, flips)  # (B, T)
+
+        # Valid mask: timestep t is valid iff t < length
+        timesteps = jnp.arange(T, dtype=jnp.int32)[None, :]
+        valid = timesteps < lengths[:, None]  # (B, T)
+
         return obs_flat, returns.reshape(B * T), valid.reshape(B * T)
- 
+
     return jax.jit(compute_lambda_returns)
+
+
+# ---------------------------------------------------------------------------
+# Training step — loss weighted by valid_mask, no dynamic indexing
+# ---------------------------------------------------------------------------
 
 def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTransformation):
     n_actions = model.board_size * model.board_size * 3
- 
+
     def loss_fn(params, batch_stats, obs, targets, valid_mask):
         dummy_mask = jnp.ones((obs.shape[0], n_actions), dtype=bool)
         (_, v), new_batch_stats = model(
@@ -228,6 +277,7 @@ def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTran
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
+        # Only average over valid (non-padding) timesteps
         loss = jnp.sum(((v - targets) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
         return loss, new_batch_stats
 
@@ -239,11 +289,17 @@ def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTran
         updates, new_opt_state = optimizer.update(grads, opt_state, params)
         new_params = optax.apply_updates(params, updates)
         return new_params, new_batch_stats, new_opt_state, loss
-    
+
     return train_step
 
 
-def initialise_td_model(config: TDTrainConfig, run_name: str) -> tuple[ModelManager, chex.ArrayTree, chex.ArrayTree]:
+# ---------------------------------------------------------------------------
+# Model initialisation (unchanged)
+# ---------------------------------------------------------------------------
+
+def initialise_td_model(
+    config: TDTrainConfig, run_name: str
+) -> tuple[ModelManager, chex.ArrayTree, chex.ArrayTree]:
     model = build_model_manager(
         model_id=run_name,
         model_type="td",
@@ -263,6 +319,10 @@ def initialise_td_model(config: TDTrainConfig, run_name: str) -> tuple[ModelMana
         batch_stats = payload["batch_stats"]
     return model, params, batch_stats
 
+
+# ---------------------------------------------------------------------------
+# Persistence helpers (unchanged)
+# ---------------------------------------------------------------------------
 
 def _save_pickle(path: str | Path, payload: dict) -> None:
     path = Path(path)
@@ -295,7 +355,6 @@ def _read_json(path: str | Path) -> dict | None:
     if not path.is_file():
         return None
     import json
-
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
 
@@ -379,20 +438,20 @@ def _td_checkpoint_state(
 def _validate_resume_config(config: TDTrainConfig, resume_payload: dict) -> None:
     saved = resume_payload["config"]
     for key in [
-        "experiment_name",
-        "board_size",
-        "model_type",
-        "hidden_size",
-        "n_res_layers",
-        "learning_rate",
-        "discount_factor",
-        "lambda_",
-        "episodes_per_iteration",
-        "seed",
+        "experiment_name", "board_size", "model_type", "hidden_size",
+        "n_res_layers", "learning_rate", "discount_factor", "lambda_",
+        "episodes_per_iteration", "seed", "training_passes",
     ]:
         if saved.get(key) != config.to_dict().get(key):
-            raise ValueError(f"Resume config mismatch for {key}: {saved.get(key)!r} != {config.to_dict().get(key)!r}")
+            raise ValueError(
+                f"Resume config mismatch for {key}: "
+                f"{saved.get(key)!r} != {config.to_dict().get(key)!r}"
+            )
 
+
+# ---------------------------------------------------------------------------
+# Main training loop
+# ---------------------------------------------------------------------------
 
 def train_experiment(
     config: TDTrainConfig,
@@ -409,7 +468,7 @@ def train_experiment(
     optimizer = optax.adam(config.learning_rate)
     resume_payload = None
     latest_checkpoint: str | None = None
- 
+
     if resume and _resume_state_path(run_dir).is_file():
         resume_payload = _load_pickle(_resume_state_path(run_dir))
         _validate_resume_config(config, resume_payload)
@@ -421,7 +480,7 @@ def train_experiment(
             and int(existing_summary.get("final_iteration", 0)) >= config.num_iterations
         ):
             return existing_summary
- 
+
     if resume_payload is not None:
         model = build_model_manager(
             model_id=run_name,
@@ -461,20 +520,28 @@ def train_experiment(
         metrics_rows = []
         eval_rows = []
         completed_iterations = 0
- 
-    # Build JIT-compiled kernels once, before the loop
+
     collect_episodes = make_collect_episodes(env, model, config.max_plies)
     compute_lambda_returns = make_compute_lambda_returns(
         model, config.discount_factor, config.lambda_
     )
     train_step = make_td_lambda_train_step(model, optimizer)
- 
-    training_passes = getattr(config, "training_passes", 1)
- 
+    training_passes = config.training_passes
+
     interrupted = False
     interrupt_signal = None
     final_checkpoint = checkpoints_dir / "final.pkl"
- 
+
+    # Track next checkpoint iteration to stay on clean multiples after resume
+    next_checkpoint_iter = (
+        (completed_iterations // config.checkpoint_interval + 1)
+        * config.checkpoint_interval
+    )
+    next_eval_iter = (
+        (completed_iterations // config.eval_interval + 1)
+        * config.eval_interval
+    )
+
     with SignalCheckpointState() as signal_state:
         with Progress(
             TextColumn("[progress.description]{task.description}"),
@@ -488,46 +555,42 @@ def train_experiment(
                 total=config.num_iterations,
                 completed=completed_iterations,
             )
- 
+
             for iteration in range(completed_iterations + 1, config.num_iterations + 1):
                 # --- Episode collection (fully on-device) ---
                 rng, episodes_rng = jax.random.split(rng)
                 episode_keys = jax.random.split(episodes_rng, config.episodes_per_iteration)
- 
-                obs_buf, rewards_buf, dones_buf, lengths = collect_episodes(
+
+                obs_buf, rewards_buf, dones_buf, flips_buf, lengths = collect_episodes(
                     episode_keys,
                     {"params": params, "batch_stats": batch_stats},
                 )
-                # obs_buf    : (B, T, *obs_shape)
-                # rewards_buf: (B, T)
-                # dones_buf  : (B, T)
-                # lengths    : (B,)
- 
-                # --- λ-return computation (on-device, no Python loop) ---
+
+                # --- λ-return computation (on-device, perspective-corrected) ---
                 flat_obs, flat_targets, valid_mask = compute_lambda_returns(
-                    obs_buf, rewards_buf, dones_buf, lengths,
+                    obs_buf, rewards_buf, dones_buf, flips_buf, lengths,
                     {"params": params, "batch_stats": batch_stats},
                 )
-                # Keep only valid timesteps
                 n_transitions = int(valid_mask.sum())
- 
-                # --- Training (multiple passes over collected data) ---
+
+                # --- Training (multiple passes, loss weighted by valid_mask) ---
                 total_loss = 0.0
                 for _ in range(training_passes):
                     params, batch_stats, opt_state, loss = train_step(
-                        params, batch_stats, opt_state, flat_obs, flat_targets, valid_mask
+                        params, batch_stats, opt_state,
+                        flat_obs, flat_targets, valid_mask,
                     )
                     total_loss += float(loss)
                 avg_loss = total_loss / training_passes
- 
+
                 metrics_row = {
                     "iteration": iteration,
                     "n_transitions": n_transitions,
                     "value_loss": avg_loss,
                 }
                 metrics_rows.append(metrics_row)
- 
-                if iteration % config.checkpoint_interval == 0 or iteration == config.num_iterations:
+
+                if iteration >= next_checkpoint_iter or iteration == config.num_iterations:
                     checkpoint_path = checkpoints_dir / f"iter_{iteration:04d}.pkl"
                     save_checkpoint(
                         checkpoint_path,
@@ -537,8 +600,9 @@ def train_experiment(
                         iteration=iteration,
                     )
                     latest_checkpoint = str(checkpoint_path)
- 
-                if iteration % config.eval_interval == 0 or iteration == config.num_iterations:
+                    next_checkpoint_iter += config.checkpoint_interval
+
+                if iteration >= next_eval_iter or iteration == config.num_iterations:
                     eval_summary = evaluate_td_against_greedy(
                         env=env,
                         model=model,
@@ -555,28 +619,48 @@ def train_experiment(
                         "greedy_draw_rate": eval_summary["draw_rate"],
                         "greedy_loss_rate": eval_summary["loss_rate"],
                     })
- 
+                    next_eval_iter += config.eval_interval
+
                 completed_iterations = iteration
                 progress.advance(task)
- 
+
+                # Lightweight status update every iteration
                 status = "running"
                 if signal_state.requested and completed_iterations < config.num_iterations:
                     interrupted = True
                     interrupt_signal = signal_state.signal_name
                     status = "interrupted"
- 
-                _td_checkpoint_state(
-                    run_dir=run_dir, config=config, run_name=run_name,
-                    params=params, batch_stats=batch_stats, opt_state=opt_state,
-                    rng=rng, numpy_rng=numpy_rng, metrics_rows=metrics_rows,
-                    eval_rows=eval_rows, completed_iterations=completed_iterations,
-                    latest_checkpoint=latest_checkpoint,
-                    final_checkpoint=str(final_checkpoint) if final_checkpoint.is_file() else None,
-                    status=status, interrupt_signal=interrupt_signal,
+
+                write_json(
+                    _status_path(run_dir),
+                    {
+                        "experiment_name": config.experiment_name,
+                        "run_name": run_name,
+                        "board_size": config.board_size,
+                        "model_type": config.model_type,
+                        "target_iterations": config.num_iterations,
+                        "completed_iterations": completed_iterations,
+                        "remaining_iterations": max(0, config.num_iterations - completed_iterations),
+                        "status": status,
+                        "latest_checkpoint": latest_checkpoint,
+                    },
                 )
+
+                # Heavy resume checkpoint only at checkpoint intervals
+                if iteration >= (next_checkpoint_iter - config.checkpoint_interval) or interrupted:
+                    _td_checkpoint_state(
+                        run_dir=run_dir, config=config, run_name=run_name,
+                        params=params, batch_stats=batch_stats, opt_state=opt_state,
+                        rng=rng, numpy_rng=numpy_rng, metrics_rows=metrics_rows,
+                        eval_rows=eval_rows, completed_iterations=completed_iterations,
+                        latest_checkpoint=latest_checkpoint,
+                        final_checkpoint=str(final_checkpoint) if final_checkpoint.is_file() else None,
+                        status=status, interrupt_signal=interrupt_signal,
+                    )
+
                 if interrupted:
                     break
- 
+
     if interrupted:
         return _read_json(_summary_path(run_dir)) or {
             "experiment_name": config.experiment_name,
@@ -584,7 +668,7 @@ def train_experiment(
             "status": "interrupted",
             "final_iteration": completed_iterations,
         }
- 
+
     save_checkpoint(
         final_checkpoint,
         config=config.to_dict(),
@@ -603,6 +687,10 @@ def train_experiment(
         status="completed",
     )
 
+
+# ---------------------------------------------------------------------------
+# Config builder (unchanged)
+# ---------------------------------------------------------------------------
 
 def build_config_from_preset(
     preset: TDTrainConfig,
