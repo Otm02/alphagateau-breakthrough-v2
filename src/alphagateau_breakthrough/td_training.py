@@ -108,8 +108,6 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         dones_buf   = jnp.zeros((max_plies,),             dtype=bool)
         flips_buf   = jnp.zeros((max_plies,),             dtype=bool)
 
-        state = env.init(rng)
-
         def cond(carry):
             state, _, _, _, _, t, _ = carry
             return jnp.logical_and(~state.terminated, t < max_plies)
@@ -272,8 +270,8 @@ def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTran
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
-        # Only average over valid (non-padding) timesteps
-        loss = jnp.sum(((v - targets) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
+        targets_clipped = jnp.clip(targets, -1.0, 1.0)
+        loss = jnp.sum(((v - targets_clipped) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
         return loss, new_batch_stats
 
     @jax.jit
