@@ -88,7 +88,7 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         dummy_mask = jnp.ones((n_actions, n_actions), dtype=bool)
         _, vals = model(all_obs, dummy_mask, params=params, training=False)
         vals = jnp.where(
-            all_next.current_player != state.current_player, -vals, vals
+            jnp.not_equal(all_next.current_player, state.current_player), -vals, vals
         )
         vals = jnp.where(state.legal_action_mask, vals, jnp.finfo(vals.dtype).min)
         gumbel_noise = jax.random.gumbel(rng, shape=vals.shape) * 0.5
@@ -119,7 +119,7 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
 
             # Did the active player change? (always True in Breakthrough except
             # at terminal, but we record it explicitly for correctness)
-            flip = next_state.current_player != state.current_player
+            flip = jnp.not_equal(next_state.current_player, state.current_player)
 
             obs_buf     = obs_buf.at[t].set(obs)
             rewards_buf = rewards_buf.at[t].set(reward)
