@@ -80,36 +80,19 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
     dummy_state = env.init(jax.random.PRNGKey(0))
     obs_shape = model.format_data(state=dummy_state).shape
 
-    def _greedy_action(state: BreakthroughState, params: chex.ArrayTree) -> jnp.ndarray:
-        """Pick the action with highest value among legal successors."""
+    def _greedy_action(state: BreakthroughState, params: chex.ArrayTree, rng: chex.PRNGKey) -> jnp.ndarray:
         all_next = jax.vmap(lambda a: env.step(state, a))(
             jnp.arange(n_actions, dtype=jnp.int32)
         )
-        if model.use_graph:
-            # GNN: score via policy logits of the current state
-            obs_cur = model.format_data(state=state)
-            logits, _ = model(
-                obs_cur,
-                state.legal_action_mask,
-                params=params,
-                training=False,
-            )
-            return jnp.argmax(logits)
-        else:
-            # CNN/TD: evaluate each successor state
-            all_obs = jax.vmap(lambda s: model.format_data(state=s))(all_next)
-            dummy_mask = jnp.ones((n_actions, n_actions), dtype=bool)
-            _, vals = model(all_obs, dummy_mask, params=params, training=False)
-            # vals shape: (n_actions,) — no squeeze needed for TDValueNet
-            # Negate value when perspective flips to opponent
-            vals = jnp.where(
-                all_next.current_player != state.current_player, -vals, vals
-            )
-            # Mask illegal actions
-            vals = jnp.where(
-                state.legal_action_mask, vals, jnp.finfo(vals.dtype).min
-            )
-            return jnp.argmax(vals)
+        all_obs = jax.vmap(lambda s: model.format_data(state=s))(all_next)
+        dummy_mask = jnp.ones((n_actions, n_actions), dtype=bool)
+        _, vals = model(all_obs, dummy_mask, params=params, training=False)
+        vals = jnp.where(
+            all_next.current_player != state.current_player, -vals, vals
+        )
+        vals = jnp.where(state.legal_action_mask, vals, jnp.finfo(vals.dtype).min)
+        gumbel_noise = jax.random.gumbel(rng, shape=vals.shape) * 0.5
+        return jnp.argmax(vals + gumbel_noise)
 
     def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree):
         obs_buf     = jnp.zeros((max_plies, *obs_shape), dtype=jnp.float32)
@@ -120,14 +103,14 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         state = env.init(rng)
 
         def cond(carry):
-            state, _, _, _, _, t = carry
+            state, _, _, _, _, t, _ = carry
             return jnp.logical_and(~state.terminated, t < max_plies)
 
         def body(carry):
-            state, obs_buf, rewards_buf, dones_buf, flips_buf, t = carry
-
-            obs        = model.format_data(state=state).astype(jnp.float32)
-            action     = _greedy_action(state, params)
+            state, obs_buf, rewards_buf, dones_buf, flips_buf, t, rng = carry
+            rng, action_rng = jax.random.split(rng)
+            obs    = model.format_data(state=state).astype(jnp.float32)
+            action = _greedy_action(state, params, action_rng)
             next_state = env.step(state, action)
 
             # Reward to the player who just moved
@@ -143,10 +126,12 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
             dones_buf   = dones_buf.at[t].set(done)
             flips_buf   = flips_buf.at[t].set(flip)
 
-            return next_state, obs_buf, rewards_buf, dones_buf, flips_buf, t + 1
+            return next_state, obs_buf, rewards_buf, dones_buf, flips_buf, t + 1, rng
 
-        init = (state, obs_buf, rewards_buf, dones_buf, flips_buf, jnp.int32(0))
-        _, obs_buf, rewards_buf, dones_buf, flips_buf, length = jax.lax.while_loop(
+        rng, init_rng = jax.random.split(rng)
+        state = env.init(init_rng)
+        init = (state, obs_buf, rewards_buf, dones_buf, flips_buf, jnp.int32(0), rng)
+        _, obs_buf, rewards_buf, dones_buf, flips_buf, length, _ = jax.lax.while_loop(
             cond, body, init
         )
         return obs_buf, rewards_buf, dones_buf, flips_buf, length
