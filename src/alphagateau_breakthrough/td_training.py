@@ -136,8 +136,23 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
 
             return next_state, obs_buf, rewards_buf, dones_buf, flips_buf, t + 1, rng
 
-        rng, init_rng = jax.random.split(rng)
+        rng, init_rng, swap_rng = jax.random.split(rng, 3)
         state = env.init(init_rng)
+        swap = jax.random.bernoulli(swap_rng)
+        # Flip the board so player 1 starts half the time
+        board_flipped = -jnp.flip(state._board, axis=(0, 1))
+        state = jax.lax.cond(
+            swap,
+            lambda: env._make_state(
+                board=board_flipped,
+                current_player=jnp.int32(1),
+                rewards=jnp.zeros(2, dtype=jnp.float32),
+                terminated=jnp.bool_(False),
+                winner=jnp.int32(-1),
+                turn_count=jnp.int32(0),
+            ),
+            lambda: state,
+        )
         init = (state, obs_buf, rewards_buf, dones_buf, flips_buf, jnp.int32(0), rng)
         _, obs_buf, rewards_buf, dones_buf, flips_buf, length, _ = jax.lax.while_loop(
             cond, body, init
@@ -269,7 +284,6 @@ def make_td_lambda_train_step(model: ModelManager, optimizer: optax.GradientTran
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
-        targets_clipped = jnp.clip(targets, -1.0, 1.0)
         loss = jnp.sum(((v - targets) ** 2) * valid_mask) / jnp.maximum(valid_mask.sum(), 1)
         return loss, new_batch_stats
 
