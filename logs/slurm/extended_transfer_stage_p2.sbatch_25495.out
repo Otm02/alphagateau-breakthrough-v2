@@ -1,0 +1,1 @@
+Running: python scripts/run_extended_transfer_pipeline_p2.py --output-root artifacts/experiments --resume --finetuned-6x6-checkpoint artifacts/experiments/gnn_6x6_finetune_cosine/checkpoints/final.pkl
