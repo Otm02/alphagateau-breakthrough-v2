@@ -58,28 +58,32 @@ class SignalCheckpointState:
 # JAX-native episode collection
 # ---------------------------------------------------------------------------
 
-def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: int, epsilon: float=0.3):
+def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: int, epsilon: float = 0.3):
     """
     Returns a JIT-compiled function that collects a batch of self-play episodes
     entirely on-device using lax.while_loop + vmap.
-
-    All observations are stored from the perspective of the player who is about
-    to move (i.e. state.current_player at time t). The `flips` buffer records
-    whether the player changes after each transition — used by
-    make_compute_lambda_returns to negate bootstrapped values when the
-    perspective switches.
-
+ 
+    All rewards are recorded from the perspective of the STARTING player of
+    each episode (always player 0 for normal episodes, player 1 for swapped).
+    This gives a consistent frame of reference so compute_lambda_returns needs
+    no perspective flipping.
+ 
+    Half the episodes start with a flipped board (player 1 to move) so both
+    players experience winning and losing.
+ 
     Returns:
-        obs     : (B, T, *obs_shape)  float32  — obs at time t, current player's view
-        rewards : (B, T)              float32  — reward to current_player after move t
-        dones   : (B, T)              bool
-        flips   : (B, T)              bool     — True when next_player != current_player
-        lengths : (B,)                int32    — actual ply count per episode
+        obs          : (B, T, *obs_shape)  float32
+        rewards      : (B, T)              float32  — from starting player's POV
+        dones        : (B, T)              bool
+        lengths      : (B,)                int32
+        start_players: (B,)                int32    — 0 or 1
     """
     n_actions = env.num_actions
     dummy_state = env.init(jax.random.PRNGKey(0))
     obs_shape = model.format_data(state=dummy_state).squeeze(0).shape
-
+ 
+    from .env import canonical_board, _legal_action_mask_from_canonical, observation_from_canonical
+ 
     def _greedy_action(state: BreakthroughState, params: chex.ArrayTree, rng: chex.PRNGKey) -> jnp.ndarray:
         all_next = jax.vmap(lambda a: env.step(state, a))(
             jnp.arange(n_actions, dtype=jnp.int32)
@@ -87,198 +91,183 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         all_obs = jax.vmap(lambda s: model.format_data(state=s).squeeze(0))(all_next)
         dummy_mask = jnp.ones((n_actions, n_actions), dtype=bool)
         _, vals = model(all_obs, dummy_mask, params=params, training=False)
+        # negate values for successor states where opponent is to move
         vals = jnp.where(
             jnp.not_equal(all_next.current_player, state.current_player), -vals, vals
         )
         vals = jnp.where(state.legal_action_mask, vals, jnp.finfo(vals.dtype).min)
-
+ 
         rng, eps_rng, rand_rng = jax.random.split(rng, 3)
         greedy_action = jnp.argmax(vals)
-
-        # random legal action
         legal_mask = state.legal_action_mask.astype(jnp.float32)
         rand_action = jax.random.choice(rand_rng, n_actions, p=legal_mask / legal_mask.sum())
-
         use_random = jax.random.uniform(eps_rng) < epsilon
         return jnp.where(use_random, rand_action, greedy_action)
-
+ 
     def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree, swap: jnp.ndarray):
+        """
+        swap=False: player 0 starts, rewards from player 0's POV
+        swap=True:  player 1 starts, rewards from player 1's POV
+        Either way, the starting player's reward is positive when they win.
+        """
         obs_buf     = jnp.zeros((max_plies, *obs_shape), dtype=jnp.float32)
         rewards_buf = jnp.zeros((max_plies,),             dtype=jnp.float32)
         dones_buf   = jnp.zeros((max_plies,),             dtype=bool)
-        flips_buf   = jnp.zeros((max_plies,),             dtype=bool)
-
-        def cond(carry):
-            state, _, _, _, _, t, _ = carry
-            return jnp.logical_and(~state.terminated, t < max_plies)
-
-        def body(carry):
-            state, obs_buf, rewards_buf, dones_buf, flips_buf, t, rng = carry
-            rng, action_rng = jax.random.split(rng)
-            obs = model.format_data(state=state).squeeze(0).astype(jnp.float32)
-            action = _greedy_action(state, params, action_rng)
-            next_state = env.step(state, action)
-
-            reward = next_state.rewards[jnp.int32(state.current_player)]
-            done   = next_state.terminated
-
-            # Did the active player change? (always True in Breakthrough except
-            # at terminal, but we record it explicitly for correctness)
-            flip = jnp.not_equal(
-                jnp.int32(next_state.current_player), 
-                jnp.int32(state.current_player)
-            )
-
-            obs_buf     = obs_buf.at[t].set(obs)
-            rewards_buf = rewards_buf.at[t].set(reward)
-            dones_buf   = dones_buf.at[t].set(done)
-            flips_buf   = flips_buf.at[t].set(flip)
-
-            return next_state, obs_buf, rewards_buf, dones_buf, flips_buf, t + 1, rng
-
+ 
         rng, init_rng = jax.random.split(rng)
         state = env.init(init_rng)
-
-        # Swap board and starting player using jnp.where on individual fields
-        board_normal   = state._board
-        board_flipped  = (-jnp.flip(state._board, axis=(0, 1))).astype(state._board.dtype)
-        board          = jnp.where(swap, board_flipped, board_normal)
-        current_player = jnp.where(swap, jnp.int32(1), jnp.int32(0))
-
-        # Rebuild canonical observation and legal mask for the (possibly swapped) state
-        from .env import canonical_board, _legal_action_mask_from_canonical, observation_from_canonical
-        canon = canonical_board(board, current_player)
+ 
+        # Build swapped initial state using field-level jnp.where (JAX-traceable)
+        board_normal  = state._board
+        board_flipped = (-jnp.flip(state._board, axis=(0, 1))).astype(state._board.dtype)
+        board         = jnp.where(swap, board_flipped, board_normal)
+        start_player  = jnp.where(swap, jnp.int32(1), jnp.int32(0))
+ 
+        canon    = canonical_board(board, start_player)
         obs_init = observation_from_canonical(canon)
         lam_init = _legal_action_mask_from_canonical(canon)
-
-        from flax import struct
         state = state.replace(
             _board=board,
-            current_player=current_player,
+            current_player=start_player,
             observation=obs_init,
             legal_action_mask=lam_init,
         )
-
-        init = (state, obs_buf, rewards_buf, dones_buf, flips_buf, jnp.int32(0), rng)
-        _, obs_buf, rewards_buf, dones_buf, flips_buf, length, _ = jax.lax.while_loop(
+ 
+        def cond(carry):
+            state, _, _, _, t, _ = carry
+            return jnp.logical_and(~state.terminated, t < max_plies)
+ 
+        def body(carry):
+            state, obs_buf, rewards_buf, dones_buf, t, rng = carry
+            rng, action_rng = jax.random.split(rng)
+ 
+            obs    = model.format_data(state=state).squeeze(0).astype(jnp.float32)
+            action = _greedy_action(state, params, action_rng)
+            next_state = env.step(state, action)
+ 
+            # Always record reward from starting player's perspective
+            reward = next_state.rewards[start_player]
+            done   = next_state.terminated
+ 
+            obs_buf     = obs_buf.at[t].set(obs)
+            rewards_buf = rewards_buf.at[t].set(reward)
+            dones_buf   = dones_buf.at[t].set(done)
+ 
+            return next_state, obs_buf, rewards_buf, dones_buf, t + 1, rng
+ 
+        init = (state, obs_buf, rewards_buf, dones_buf, jnp.int32(0), rng)
+        _, obs_buf, rewards_buf, dones_buf, length, _ = jax.lax.while_loop(
             cond, body, init
         )
-        return obs_buf, rewards_buf, dones_buf, flips_buf, length
-
+        return obs_buf, rewards_buf, dones_buf, length, start_player
+ 
     def collect_episodes(rng_keys: chex.PRNGKey, params: chex.ArrayTree):
-        # First half starts as player 0, second half starts as player 1
-        # Pass a boolean flag into _single_episode instead of using lax.cond
         B = rng_keys.shape[0]
-        swap_flags = jnp.arange(B) >= (B // 2)  # first half False, second half True
+        # First half: player 0 starts. Second half: player 1 starts.
+        swap_flags = jnp.arange(B) >= (B // 2)
         return jax.vmap(lambda k, swap: _single_episode(k, params, swap))(rng_keys, swap_flags)
-
+ 
     return jax.jit(collect_episodes)
-
-
-# ---------------------------------------------------------------------------
-# λ-return computation with perspective correction
-# ---------------------------------------------------------------------------
-
+ 
+ 
 def make_compute_lambda_returns(model: ModelManager, gamma: float, lambda_: float):
     """
-    Returns a JIT-compiled function that computes λ-returns for a batch of
-    episodes using lax.scan, correctly handling perspective switches.
-
-    The key invariant: all values and returns are always expressed from the
-    perspective of the player who acted at time t (i.e. state.current_player
-    at time t). When the active player changes between t and t+1 (flip=True),
-    V(s_{t+1}) must be negated before bootstrapping, because the stored value
-    for t+1 is from the opponent's perspective.
-
+    Computes TD(λ) returns for a batch of episodes.
+ 
+    Since all rewards are already in the starting player's fixed frame
+    (from make_collect_episodes), no perspective flipping is needed here.
+    The backward scan is straightforward:
+ 
+        G_T = r_T                          (terminal)
+        G_t = r_t + gamma * [(1-λ)*V(s_{t+1}) + λ*G_{t+1}]
+ 
+    V(s_{t+1}) is from the model's perspective of whoever acts at t+1.
+    Since rewards alternate sign naturally (starting player gets +1 when
+    they win, -1 when they lose), the value estimates need to be negated
+    when the current player at t+1 differs from the starting player.
+ 
     Args:
-        obs     : (B, T, *obs_shape)
-        rewards : (B, T)
-        dones   : (B, T)
-        flips   : (B, T)   — True when player changes after step t
-        lengths : (B,)
-        params  : model parameters
-
+        obs          : (B, T, *obs_shape)
+        rewards      : (B, T)   — fixed starting-player frame
+        dones        : (B, T)
+        lengths      : (B,)
+        start_players: (B,)     — 0 or 1, which player started each episode
+        params       : model parameters
+ 
     Returns:
         flat_obs     : (B*T, *obs_shape)
         flat_targets : (B*T,)
-        valid_mask   : (B*T,)  bool — True for timesteps within episode length
+        valid_mask   : (B*T,)  bool
     """
     n_actions = model.board_size * model.board_size * 3
-
+ 
     def _episode_returns(
-        obs: jnp.ndarray,      # (T, *obs_shape)
-        rewards: jnp.ndarray,  # (T,)
-        dones: jnp.ndarray,    # (T,)
-        v_next: jnp.ndarray,   # (T,)  — V(s_{t+1}) in s_{t+1}'s player's frame
-        flips: jnp.ndarray,    # (T,)  — True when player changes at step t
+        rewards:      jnp.ndarray,   # (T,)
+        dones:        jnp.ndarray,   # (T,)
+        v_next:       jnp.ndarray,   # (T,) — model value at s_{t+1}, current-player frame
+        start_player: jnp.ndarray,   # scalar int32
+        all_obs:      jnp.ndarray,   # (T, *obs_shape) — to infer current player per step
+        # We infer who acts at each t+1 from the parity of the step index
+        # (Breakthrough always alternates, starting from start_player)
     ) -> jnp.ndarray:
-        """
-        Backward scan to compute G_t^λ for one episode.
-
-        At each step t:
-          - v_next[t] is the model's value estimate for s_{t+1}, expressed
-            from the perspective of whoever is the current player at t+1.
-          - If flips[t] is True, the perspective has switched, so we negate
-            v_next[t] to bring it into the frame of the player at t.
-          - G_t = r_t + gamma * [(1-lambda)*V(s_{t+1}) + lambda*G_{t+1}]
-            where both V and G_{t+1} are in the frame of the player at t.
-        """
+        T = rewards.shape[0]
+ 
         def scan_fn(g_next, t):
             r    = rewards[t]
             done = dones[t]
             vn   = v_next[t]
-            flip = flips[t]
-
-            vn_corrected = jnp.where(flip, -vn, vn)
-
+ 
+            # Player acting at t+1: start_player XOR ((t+1) % 2)
+            # If different from start_player, negate vn to get it in start_player's frame
+            player_at_t1 = (start_player + t + 1) % 2
+            vn_corrected = jnp.where(
+                jnp.equal(player_at_t1, start_player), vn, -vn
+            )
+ 
             g = jnp.where(
                 done,
                 r,
                 r + gamma * ((1.0 - lambda_) * vn_corrected + lambda_ * g_next),
             )
             return g, g
-
-        T = rewards.shape[0]
+ 
         _, returns = jax.lax.scan(
             scan_fn,
             init=jnp.float32(0.0),
             xs=jnp.arange(T - 1, -1, -1, dtype=jnp.int32),
         )
-        return returns[::-1]  # reverse: scan processed T-1 first
-
+        return returns[::-1]
+ 
     def compute_lambda_returns(
-        obs: jnp.ndarray,      # (B, T, *obs_shape)
-        rewards: jnp.ndarray,  # (B, T)
-        dones: jnp.ndarray,    # (B, T)
-        flips: jnp.ndarray,    # (B, T)
-        lengths: jnp.ndarray,  # (B,)
-        params: chex.ArrayTree,
+        obs:           jnp.ndarray,   # (B, T, *obs_shape)
+        rewards:       jnp.ndarray,   # (B, T)
+        dones:         jnp.ndarray,   # (B, T)
+        lengths:       jnp.ndarray,   # (B,)
+        start_players: jnp.ndarray,   # (B,)
+        params:        chex.ArrayTree,
     ):
         B, T = obs.shape[:2]
         obs_flat   = obs.reshape(B * T, *obs.shape[2:])
         dummy_mask = jnp.ones((B * T, n_actions), dtype=bool)
-
-        # One batched forward pass to get V(s_t) for all t
+ 
+        # One batched forward pass: V(s_t) for all t, in current-player's frame
         _, v_all = model(obs_flat, dummy_mask, params=params, training=False)
-        v_all = v_all.reshape(B, T)  # (B, T)
-
-        # v_next[t] = V(s_{t+1}): shift left by 1, pad last column with 0
-        # v_all[:, t] is in the frame of whoever acts at time t.
-        # After shifting, v_next[:, t] is in the frame of whoever acts at t+1,
-        # which is why we need flips to correct perspective in _episode_returns.
+        v_all = v_all.reshape(B, T)
+ 
+        # v_next[b, t] = V(s_{t+1}), shift left and pad with 0
         v_next = jnp.concatenate([v_all[:, 1:], jnp.zeros((B, 1))], axis=1)
-
+ 
         # Compute λ-returns for all episodes in parallel
-        returns = jax.vmap(_episode_returns)(obs, rewards, dones, v_next, flips)  # (B, T)
-
-        # Valid mask: timestep t is valid iff t < length
+        returns = jax.vmap(_episode_returns)(
+            rewards, dones, v_next, start_players, obs
+        )  # (B, T)
+ 
         timesteps = jnp.arange(T, dtype=jnp.int32)[None, :]
         valid = timesteps < lengths[:, None]  # (B, T)
-
+ 
         return obs_flat, returns.reshape(B * T), valid.reshape(B * T)
-
+ 
     return jax.jit(compute_lambda_returns)
-
 
 # ---------------------------------------------------------------------------
 # Training step — loss weighted by valid_mask, no dynamic indexing
@@ -577,14 +566,14 @@ def train_experiment(
                 rng, episodes_rng = jax.random.split(rng)
                 episode_keys = jax.random.split(episodes_rng, config.episodes_per_iteration)
 
-                obs_buf, rewards_buf, dones_buf, flips_buf, lengths = collect_episodes(
+                obs_buf, rewards_buf, dones_buf, lengths, start_players = collect_episodes(
                     episode_keys,
                     {"params": params, "batch_stats": batch_stats},
                 )
 
                 # --- λ-return computation (on-device, perspective-corrected) ---
                 flat_obs, flat_targets, valid_mask = compute_lambda_returns(
-                    obs_buf, rewards_buf, dones_buf, flips_buf, lengths,
+                    obs_buf, rewards_buf, dones_buf, lengths, start_players,
                     {"params": params, "batch_stats": batch_stats},
                 )
                 n_transitions = int(valid_mask.sum())
