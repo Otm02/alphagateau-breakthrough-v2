@@ -211,7 +211,7 @@ AlphaGateau-master/
 2410.23753v1.md
 
 # Local training outputs
-artifacts/
+# artifacts/
 # logs/
 *.pkl
 
