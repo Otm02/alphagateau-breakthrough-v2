@@ -205,12 +205,11 @@ def make_compute_lambda_returns(model: ModelManager, gamma: float, lambda_: floa
             flip = flips[t]
 
             vn_corrected = jnp.where(flip, -vn, vn)
-            g_next_corrected = jnp.where(flip, -g_next, g_next)
 
             g = jnp.where(
                 done,
                 r,
-                r + gamma * ((1.0 - lambda_) * vn_corrected + lambda_ * g_next_corrected),
+                r + gamma * ((1.0 - lambda_) * vn_corrected + lambda_ * g_next),
             )
             return g, g
 

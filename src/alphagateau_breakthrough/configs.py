@@ -151,7 +151,7 @@ TD_PRESETS = {
         max_plies=96,
         episodes_per_iteration=128,
         discount_factor=0.99,
-        lambda_=0.99,
+        lambda_=0.7,
     ),
     "td_8x8_scratch": TDTrainConfig(
         model_type="td",
@@ -160,6 +160,6 @@ TD_PRESETS = {
         seed=42,
         max_plies=256,        
         discount_factor=0.99,
-        lambda_=0.99,
+        lambda_=0.7,
     )
 }
