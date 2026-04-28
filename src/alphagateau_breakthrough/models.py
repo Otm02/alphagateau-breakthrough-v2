@@ -243,20 +243,20 @@ class TDValueNet(nn.Module):
     def __call__(self, *, x: jnp.ndarray, training: bool = False) -> Tuple[jnp.ndarray, jnp.ndarray]:
         x = x.astype(jnp.float32)
         x = nn.Conv(self.inner_size, kernel_size=(3, 3), padding="SAME")(x)
-        for _ in range(self.n_res_layers):
-            x = ResidualBlock(num_channels=self.inner_size)(x=x, training=training)
-        x = nn.BatchNorm(momentum=0.9)(x, use_running_average=not training)
         x = jax.nn.relu(x)
-        value = nn.Conv(features=1, kernel_size=(1, 1), padding="SAME")(x)
-        value = nn.BatchNorm(momentum=0.9)(value, use_running_average=not training)
-        value = jax.nn.relu(value)
-        value = value.reshape((value.shape[0], -1))
-        value = nn.Dense(self.inner_size)(value)
-        value = jax.nn.relu(value)
-        value = nn.Dense(1)(value)
-        batch_size = value.shape[0]
-        dummy_logits = jnp.zeros((batch_size, self.board_size * self.board_size * 3))
-        value = nn.Dense(1)(value)
+        for _ in range(self.n_res_layers):
+            skip = x
+            x = nn.Conv(self.inner_size, kernel_size=(3, 3), padding="SAME")(x)
+            x = jax.nn.relu(x)
+            x = nn.Conv(self.inner_size, kernel_size=(3, 3), padding="SAME")(x)
+            x = x + skip
+            x = jax.nn.relu(x)
+        x = x.reshape((x.shape[0], -1))
+        x = nn.Dense(self.inner_size)(x)
+        x = jax.nn.relu(x)
+        value = nn.Dense(1)(x)
+        n_actions = self.board_size * self.board_size * 3
+        dummy_logits = jnp.zeros((x.shape[0], n_actions))
         return dummy_logits, jnp.tanh(value).reshape((-1,))
     
 class ModelManager(NamedTuple):
@@ -271,22 +271,16 @@ class ModelManager(NamedTuple):
             return self.model.init(key, graphs=cast(BreakthroughGraphsTuple, x))
         return self.model.init(key, x=cast(jnp.ndarray, x))
 
-    def __call__(
-        self,
-        x: jnp.ndarray | BreakthroughGraphsTuple,
-        legal_action_mask: jnp.ndarray,
-        params: chex.ArrayTree,
-        training: bool = False,
-    ) -> Tuple[jnp.ndarray, jnp.ndarray] | Tuple[Tuple[jnp.ndarray, jnp.ndarray], chex.ArrayTree]:
+    def __call__(self, x, legal_action_mask, params, training=False):
         if self.use_graph:
-            outputs, batch_stats = self.model.apply(
+            outputs, mutated = self.model.apply(
                 cast(Mapping, params),
                 graphs=cast(BreakthroughGraphsTuple, x),
                 mutable=["batch_stats"],
                 training=training,
             )
         else:
-            outputs, batch_stats = self.model.apply(
+            outputs, mutated = self.model.apply(
                 cast(Mapping, params),
                 x=cast(jnp.ndarray, x),
                 mutable=["batch_stats"],
@@ -296,7 +290,8 @@ class ModelManager(NamedTuple):
         logits = logits - jnp.max(logits, axis=-1, keepdims=True)
         logits = jnp.where(legal_action_mask, logits, jnp.finfo(logits.dtype).min)
         if training:
-            return (logits, value), batch_stats["batch_stats"]
+            new_batch_stats = mutated.get("batch_stats", {})  # ← safe for no-batchnorm models
+            return (logits, value), new_batch_stats
         return logits, value
 
     def format_data(

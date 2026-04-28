@@ -317,7 +317,7 @@ def initialise_td_model(
     inputs = model.format_data(state=dummy_state)
     variables = model.init(jax.random.PRNGKey(config.seed), inputs)
     params = variables["params"]
-    batch_stats = variables["batch_stats"]
+    batch_stats = variables.get("batch_stats", {})
     if config.initial_checkpoint:
         payload = load_checkpoint(config.initial_checkpoint)
         params = payload["params"]
