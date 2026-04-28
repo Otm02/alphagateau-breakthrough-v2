@@ -125,7 +125,7 @@ class TDTrainConfig:
     model_type: str
     hidden_size: int = 64
     n_res_layers: int = 4
-    learning_rate: float = 1e-3
+    learning_rate: float = 1e-2
     discount_factor: float = 1.0
     num_iterations: int = 40
     episodes_per_iteration: int = 64
