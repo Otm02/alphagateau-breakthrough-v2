@@ -1,0 +1,12 @@
+d2-c3
+d4xc3
+c1-d2
+c3xd2
+e1xd2
+e4-e3
+d2-c3
+b4xc3
+d1-d2
+e3xd2
+c2-b3
+d2-d1

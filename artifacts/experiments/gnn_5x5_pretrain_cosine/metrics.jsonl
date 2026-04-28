@@ -1,0 +1,40 @@
+{"iteration": 1, "replay_size": 12288, "policy_loss": 2.3521237087746463, "value_loss": 0.4679279663444807}
+{"iteration": 2, "replay_size": 24576, "policy_loss": 2.343500995387634, "value_loss": 0.45783752008962136}
+{"iteration": 3, "replay_size": 36864, "policy_loss": 2.3359152326981225, "value_loss": 0.45755449527253705}
+{"iteration": 4, "replay_size": 49152, "policy_loss": 2.336040632954488, "value_loss": 0.4561639621388167}
+{"iteration": 5, "replay_size": 50000, "policy_loss": 2.332723903365996, "value_loss": 0.4470464182724263, "greedy_win_rate": 0.08333333333333333, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.9166666666666666}
+{"iteration": 6, "replay_size": 50000, "policy_loss": 2.3308388438939134, "value_loss": 0.4478698224783249}
+{"iteration": 7, "replay_size": 50000, "policy_loss": 2.330117012871365, "value_loss": 0.4472089331220268}
+{"iteration": 8, "replay_size": 50000, "policy_loss": 2.3300207557201995, "value_loss": 0.4474611719462081}
+{"iteration": 9, "replay_size": 50000, "policy_loss": 2.3313167253926528, "value_loss": 0.4491246848649771}
+{"iteration": 10, "replay_size": 50000, "policy_loss": 2.3293849313762824, "value_loss": 0.4479572815718022, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 11, "replay_size": 50000, "policy_loss": 2.330554086481258, "value_loss": 0.4516423425509591}
+{"iteration": 12, "replay_size": 50000, "policy_loss": 2.33588968913778, "value_loss": 0.45053836779618844}
+{"iteration": 13, "replay_size": 50000, "policy_loss": 2.3298573744281765, "value_loss": 0.4502096503171664}
+{"iteration": 14, "replay_size": 50000, "policy_loss": 2.3273307756638864, "value_loss": 0.4497268688739796}
+{"iteration": 15, "replay_size": 50000, "policy_loss": 2.329733198568244, "value_loss": 0.4479011629783237, "greedy_win_rate": 0.25, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.75}
+{"iteration": 16, "replay_size": 50000, "policy_loss": 2.329903722114661, "value_loss": 0.44814029314988096}
+{"iteration": 17, "replay_size": 50000, "policy_loss": 2.3315693410196925, "value_loss": 0.4479983250936076}
+{"iteration": 18, "replay_size": 50000, "policy_loss": 2.329616353850664, "value_loss": 0.4466517748890705}
+{"iteration": 19, "replay_size": 50000, "policy_loss": 2.3298538429483715, "value_loss": 0.4474868274910349}
+{"iteration": 20, "replay_size": 50000, "policy_loss": 2.329336680462357, "value_loss": 0.44650688721642146, "greedy_win_rate": 0.25, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.75}
+{"iteration": 21, "replay_size": 50000, "policy_loss": 2.3307957279086877, "value_loss": 0.44604956180277006}
+{"iteration": 22, "replay_size": 50000, "policy_loss": 2.3298978041595135, "value_loss": 0.44721451277693164}
+{"iteration": 23, "replay_size": 50000, "policy_loss": 2.3289303781128416, "value_loss": 0.4470954192814235}
+{"iteration": 24, "replay_size": 50000, "policy_loss": 2.331094333823298, "value_loss": 0.44841663938173104}
+{"iteration": 25, "replay_size": 50000, "policy_loss": 2.332369659835337, "value_loss": 0.44958241068294197, "greedy_win_rate": 0.16666666666666666, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.8333333333333334}
+{"iteration": 26, "replay_size": 50000, "policy_loss": 2.328970978110456, "value_loss": 0.4494944901495371}
+{"iteration": 27, "replay_size": 50000, "policy_loss": 2.330967137206074, "value_loss": 0.4500494769341509}
+{"iteration": 28, "replay_size": 50000, "policy_loss": 2.3319393452853157, "value_loss": 0.4495437467296664}
+{"iteration": 29, "replay_size": 50000, "policy_loss": 2.3314879877771824, "value_loss": 0.4481493491254909}
+{"iteration": 30, "replay_size": 50000, "policy_loss": 2.329285272868128, "value_loss": 0.446621361142084, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 31, "replay_size": 50000, "policy_loss": 2.33063910972141, "value_loss": 0.4450557306313484}
+{"iteration": 32, "replay_size": 50000, "policy_loss": 2.3306706055483652, "value_loss": 0.4486698580574287}
+{"iteration": 33, "replay_size": 50000, "policy_loss": 2.333620702258756, "value_loss": 0.44813576035401886}
+{"iteration": 34, "replay_size": 50000, "policy_loss": 2.3267000068012487, "value_loss": 0.4479306282788019}
+{"iteration": 35, "replay_size": 50000, "policy_loss": 2.3332148768990355, "value_loss": 0.44907503390968534, "greedy_win_rate": 0.3333333333333333, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.6666666666666666}
+{"iteration": 36, "replay_size": 50000, "policy_loss": 2.331806189119434, "value_loss": 0.4479152165095724}
+{"iteration": 37, "replay_size": 50000, "policy_loss": 2.330232851178637, "value_loss": 0.4466341419500822}
+{"iteration": 38, "replay_size": 50000, "policy_loss": 2.327835458494179, "value_loss": 0.4465621853874526}
+{"iteration": 39, "replay_size": 50000, "policy_loss": 2.3264616575192245, "value_loss": 0.44579102228683026}
+{"iteration": 40, "replay_size": 50000, "policy_loss": 2.33073438648683, "value_loss": 0.44588853418827057, "greedy_win_rate": 0.3333333333333333, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.6666666666666666}

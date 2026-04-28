@@ -1,0 +1,13 @@
+a2-b3
+f5-f4
+e2-d3
+f4-f3
+e1-e2
+f3xe2
+f1xe2
+e5-e4
+b3-b4
+e4xd3
+b4xc5
+d3xe2
+c5xb6

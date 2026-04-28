@@ -1,0 +1,26 @@
+{
+  "experiment_name": "gnn_6x6_finetune_cosine",
+  "run_name": "gnn_6x6_finetune_cosine",
+  "board_size": 6,
+  "model_type": "gnn",
+  "final_checkpoint": null,
+  "final_iteration": 19,
+  "target_iterations": 30,
+  "status": "running",
+  "resume_state": "artifacts/experiments/gnn_6x6_finetune_cosine/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 19,
+    "replay_size": 50000,
+    "policy_loss": 2.5537588355177956,
+    "value_loss": 0.467134445505014
+  },
+  "latest_eval": {
+    "iteration": 15,
+    "wins": 6,
+    "draws": 0,
+    "losses": 6,
+    "win_rate": 0.5,
+    "draw_rate": 0.0,
+    "loss_rate": 0.5
+  }
+}
