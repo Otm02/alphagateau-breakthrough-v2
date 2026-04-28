@@ -1,0 +1,7 @@
+Loaded cuda module: cuda/cuda-12.6
+E0427 20:52:24.312012 3232096 slow_operation_alarm.cc:73] 
+********************************
+[Compiling module jit_scan for GPU] Very slow compile? If you want to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+********************************
+/var/spool/slurmd/job25434/slurm_script: line 70: 3231874 Killed                  "${cmd[@]}"
+slurmstepd: error: Detected 2 oom_kill events in StepId=25434.batch. Some of the step tasks have been OOM Killed.
