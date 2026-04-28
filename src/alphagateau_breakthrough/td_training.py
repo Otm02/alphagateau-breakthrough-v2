@@ -102,7 +102,7 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         use_random = jax.random.uniform(eps_rng) < epsilon
         return jnp.where(use_random, rand_action, greedy_action)
 
-    def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree):
+    def _single_episode(rng: chex.PRNGKey, params: chex.ArrayTree, swap: jnp.ndarray):
         obs_buf     = jnp.zeros((max_plies, *obs_shape), dtype=jnp.float32)
         rewards_buf = jnp.zeros((max_plies,),             dtype=jnp.float32)
         dones_buf   = jnp.zeros((max_plies,),             dtype=bool)
@@ -136,23 +136,29 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
 
             return next_state, obs_buf, rewards_buf, dones_buf, flips_buf, t + 1, rng
 
-        rng, init_rng, swap_rng = jax.random.split(rng, 3)
+        rng, init_rng = jax.random.split(rng)
         state = env.init(init_rng)
-        swap = jax.random.bernoulli(swap_rng)
-        # Flip the board so player 1 starts half the time
-        board_flipped = -jnp.flip(state._board, axis=(0, 1))
-        state = jax.lax.cond(
-            swap,
-            lambda: env._make_state(
-                board=board_flipped,
-                current_player=jnp.int32(1),
-                rewards=jnp.zeros(2, dtype=jnp.float32),
-                terminated=jnp.bool_(False),
-                winner=jnp.int32(-1),
-                turn_count=jnp.int32(0),
-            ),
-            lambda: state,
+
+        # Swap board and starting player using jnp.where on individual fields
+        board_normal   = state._board
+        board_flipped  = (-jnp.flip(state._board, axis=(0, 1))).astype(state._board.dtype)
+        board          = jnp.where(swap, board_flipped, board_normal)
+        current_player = jnp.where(swap, jnp.int32(1), jnp.int32(0))
+
+        # Rebuild canonical observation and legal mask for the (possibly swapped) state
+        from .env import canonical_board, _legal_action_mask_from_canonical, observation_from_canonical
+        canon = canonical_board(board, current_player)
+        obs_init = observation_from_canonical(canon)
+        lam_init = _legal_action_mask_from_canonical(canon)
+
+        from flax import struct
+        state = state.replace(
+            _board=board,
+            current_player=current_player,
+            observation=obs_init,
+            legal_action_mask=lam_init,
         )
+
         init = (state, obs_buf, rewards_buf, dones_buf, flips_buf, jnp.int32(0), rng)
         _, obs_buf, rewards_buf, dones_buf, flips_buf, length, _ = jax.lax.while_loop(
             cond, body, init
@@ -160,7 +166,11 @@ def make_collect_episodes(env: BreakthroughEnv, model: ModelManager, max_plies: 
         return obs_buf, rewards_buf, dones_buf, flips_buf, length
 
     def collect_episodes(rng_keys: chex.PRNGKey, params: chex.ArrayTree):
-        return jax.vmap(lambda k: _single_episode(k, params))(rng_keys)
+        # First half starts as player 0, second half starts as player 1
+        # Pass a boolean flag into _single_episode instead of using lax.cond
+        B = rng_keys.shape[0]
+        swap_flags = jnp.arange(B) >= (B // 2)  # first half False, second half True
+        return jax.vmap(lambda k, swap: _single_episode(k, params, swap))(rng_keys, swap_flags)
 
     return jax.jit(collect_episodes)
 
