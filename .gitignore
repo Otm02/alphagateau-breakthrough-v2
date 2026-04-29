@@ -211,9 +211,8 @@ AlphaGateau-master/
 2410.23753v1.md
 
 # Local training outputs
-artifacts/
-logs/
 *.pkl
+athmane-outputs
 
 # Local report build outputs
 report/*.aux
@@ -228,3 +227,5 @@ report/full_wrapper_*/
 
 # Claude Code local settings
 .claude/
+
+presentation/node_modules
