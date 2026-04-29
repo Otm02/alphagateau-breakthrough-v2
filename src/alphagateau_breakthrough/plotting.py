@@ -15,6 +15,7 @@ WHITE_PIECE_FILL = "#fffaf0"
 WHITE_PIECE_EDGE = "#2b2118"
 BLACK_PIECE_FILL = "#1e1e1e"
 BLACK_PIECE_EDGE = "#f5f5f5"
+ARROW_COLOR = "#2b6ea6"
 
 
 def _ensure_dir(path: str | Path) -> Path:
@@ -144,6 +145,17 @@ def _draw_breakthrough_board(
     for spine in ax.spines.values():
         spine.set_linewidth(1.0)
         spine.set_color(BOARD_EDGE)
+
+
+def _arrow_style(*, alpha: float = 0.85, linewidth: float = 1.8) -> dict:
+    return {
+        "arrowstyle": "->",
+        "lw": linewidth,
+        "color": ARROW_COLOR,
+        "alpha": alpha,
+        "shrinkA": 8,
+        "shrinkB": 8,
+    }
 
 
 def plot_scratch_comparison(
@@ -306,7 +318,7 @@ def plot_encoding_visualisation(output_path: str | Path, board_size: int = 8) ->
             "",
             xy=(to_col + 0.5, to_row + 0.5),
             xytext=(from_col + 0.5, from_row + 0.5),
-            arrowprops={"arrowstyle": "->", "lw": 1.2, "color": "#2b6ea6", "alpha": 0.55, "shrinkA": 10, "shrinkB": 10},
+            arrowprops=_arrow_style(alpha=0.6, linewidth=1.6),
         )
     ax.set_title("Canonical Breakthrough Encoding and Legal Edges", fontsize=12)
     fig.tight_layout()
@@ -330,7 +342,7 @@ def plot_breakthrough_rules(output_path: str | Path, board_size: int = 8) -> Non
     _draw_breakthrough_board(axes[0], board, board_size=board_size)
     axes[0].set_title("Starting Position", fontsize=12)
     _draw_breakthrough_board(axes[1], example, board_size=board_size)
-    arrow = {"arrowstyle": "->", "lw": 1.8, "color": "#111111", "shrinkA": 8, "shrinkB": 8}
+    arrow = _arrow_style()
     axes[1].annotate("", xy=(2.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
     axes[1].annotate("", xy=(3.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
     axes[1].annotate("", xy=(4.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
