@@ -4,12 +4,12 @@
   "board_size": 8,
   "model_type": "gnn",
   "target_iterations": 30,
-  "completed_iterations": 4,
-  "remaining_iterations": 26,
+  "completed_iterations": 9,
+  "remaining_iterations": 21,
   "status": "running",
   "is_complete": false,
   "interrupt_signal": null,
-  "latest_checkpoint": null,
+  "latest_checkpoint": "artifacts/experiments/gnn_8x8_finetune_cosine/checkpoints/iter_0005.pkl",
   "final_checkpoint": null,
   "resume_state": "artifacts/experiments/gnn_8x8_finetune_cosine/latest_resume.pkl"
 }
