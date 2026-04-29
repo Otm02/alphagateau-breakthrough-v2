@@ -1,0 +1,2 @@
+Loaded cuda module: cuda/cuda-12.6
+/var/spool/slurmd/job25554/slurm_script: line 37: FINETUNED_6X6_CHECKPOINT: set FINETUNED_6X6_CHECKPOINT to the 6x6 final checkpoint path
