@@ -41,7 +41,8 @@ plateaus at 42\% with high variance throughout training.
 Transfer from 5$\times$5 pretraining yields a strong early benefit---67\% win rate at iteration 5
 versus 17\% from scratch---but does not close the long-run gap with the CNN baseline.
 In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
-\emph{Roles}: Athmane Benarous led the training infrastructure and cluster orchestration; Farooq
+Additionally, we evaluate a TD($\lambda$) baseline, which is unable to beat the greedy evaluator within 40 iterations. We also implement a learning rate schedule with cosine decay, which significantly improves the fine-tuning from 5$\times$5 to 8$\times$8. Finally, we attempt an extended 5$\times$5 to 6$\times$6 to 8$\times$8. This leads to... % TODO: add findings here
+% \emph{Roles}: Athmane Benarous led the training infrastructure and cluster orchestration; Farooq
 Khan led experiments and analysis; Andrew Saffar led graph encoding and evaluation tooling.
 \end{abstract}
 
@@ -104,15 +105,19 @@ Node features encode occupancy, normalized coordinates, and edge-of-board indica
 encode move direction, owner, legality, capture structure, and goal-rank information.
 
 \paragraph{Models and training.}
-Both models use hidden size 64 and four residual layers.
+All models use hidden size 64 and four residual layers.
 The GNN adds attention pooling over node embeddings to produce a global representation.
 Self-play runs for 40 iterations for both 8$\times$8 scratch experiments, 40 iterations for
 5$\times$5 pretraining, and 30 iterations for 8$\times$8 fine-tuning.
 Each iteration generates 64 self-play games (128 for 5$\times$5) with 32 MCTS simulations per
 move, adding samples to a 50k-sample replay buffer from which 32-sample minibatches are drawn.
-The learning rate is $10^{-3}$ throughout.
+The learning rate is $10^{-3}$ throughout, and we ran variations of the GNN experiments using cosine decay as a learning rate scheduler.
 Both 8$\times$8 experiments used a 192-ply move cap; the repository now defaults to 256 plies to
 reduce the chance of artificially truncated games.
+
+The TD baseline uses a value-only CNN with no policy head or MCTS. We use TD($\lambda$) with $\lambda$ = 0.7. Self-play uses $\epsilon$-greedy exploration. The 5$\times$5 uses 128 episodes per iteration and a 96-ply move cap, while 8$\times$8 uses 64 episodes and 256-ply cap. Both use a learning rate of $10^{-3}$ and run for 40 iterations.
+
+Following the 5$\times$5 to 8$\times$8 transfer learning experiment, we extend this pipeline to 5$\times$5 to 8$\times$8 to 8$\times$8 in an attempt to bridge the gap between board sizes. 
 
 \paragraph{Evaluation.}
 Every five iterations we play 12 games against a greedy evaluator (always picking the
@@ -121,7 +126,7 @@ After training, we run a 12-game head-to-head match between the final GNN and CN
 checkpoints.
 We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
 fine-tuning.
-
+Since our TD baseline has no policy head, it is evaluated using greedy value-based play (argmax of values of successor states) rather than MCTS.
 \section{Results}
 
 Table~\ref{tab:results} summarises all four completed experiments.
@@ -136,10 +141,15 @@ Figure~\ref{fig:encoding} illustrates the graph encoding.
 \toprule
 Run & Iters & Peak win rate & Final win rate \\
 \midrule
-GNN 8$\times$8 scratch   & 40 & 0.67 @ iter 20 & 0.42 @ iter 40 \\
-CNN 8$\times$8 scratch   & 40 & 1.00 @ iter 40 & 1.00 @ iter 40 \\
-GNN 5$\times$5 pretrain  & 40 & 1.00 @ iter 20 & 1.00 @ iter 40 \\
-GNN 8$\times$8 fine-tune & 30 & 0.75 @ iter 15 & 0.67 @ iter 30 \\
+TD($\lambda$) 5$\times$5 scratch        & 40 & 1.00 @ iter 10 & 0.83 @ iter 40 \\
+TD($\lambda$) 8$\times$8 scratch        & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 \\
+GNN 8$\times$8 scratch                  & 40 & 0.67 @ iter 20 & 0.42 @ iter 40 \\
+CNN 8$\times$8 scratch                  & 40 & 1.00 @ iter 40 & 1.00 @ iter 40 \\
+GNN 5$\times$5 pretrain                 & 40 & 1.00 @ iter 20 & 1.00 @ iter 40 \\
+GNN 8$\times$8 fine-tune                & 30 & 0.75 @ iter 15 & 0.67 @ iter 30 \\
+GNN 5$\times$5 pretrain (cosine decay)  & 40 & 1.00 @ iter 10 & 0.83 @ iter 40 \\
+GNN 8$\times$8 scratch (cosine decay)   & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 \\
+GNN 8$\times$8 fine-tune (cosine decay) & 30 & 0.83 @ iter 15 & 0.83 @ iter 30 \\
 \bottomrule
 \end{tabular}
 \caption{Win rates are measured against the greedy evaluator over 12 games. All four experiments
@@ -175,6 +185,17 @@ cross-board knowledge transfer.
 By iteration 30, the fine-tuned model reaches 67\% while the scratch GNN at the same iteration
 is at 58\%, a persistent but modest advantage.
 Neither GNN variant approaches the CNN's 75\% win rate at iteration 30.
+
+\paragraph{TD($\lambda$) baseline.}
+TD($\lambda$) really struggles against the greedy evaluator: it is never able to win a game at any iteration of training and on either board size. On the 5$\times$5 board, the loss initially decreases (from 0.186 at iter 3 to 0.100 at iter 8) after a short spike at iteration 2 caused by the network outputting its first non-zero values. After that, loss slowly deteriorates to 0.146 at iter 40, with the number of transitions decreasing suggesting the model is converging to a fast-losing policy. On the 8$\times$8 board, we see a similar spike at iter 2, but the loss never improves from there. This indicates the model does not learn any meaningful information or favor any winning moves.
+
+\paragraph{Cosine decay LR.}
+The cosine decay learning rate scheduler allows the GNN to reach 100\% win rate twice as fast as the fixed LR on the 5$\times$5 board. However, we see that the learning rate drops by the final iteration to 83\%. We attribute this to evaluation variance: the evaluator "got lucky". Neither the policy nor value losses showed any degradation corresponding to the win rate drop.
+On the 8$\times$8 board, we note that we obtain a lower peak win rate than fixed LR, but a higher final win rate. We also find that while the loss plateaued for the fixed LR, it continues to steadily decrease with cosine decay. This alongside the noisy win rates indicates that the model has not yet converged. We posit that with more iterations, this model would overcome the fixed LR's peak win rate.
+The 5$\times$5 to 8$\times$8 transfer learning pipeline also shows clear improvement: the win rate jumps from 0.75 and 0.67 (peak and final) for fixed LR to 0.83 (both) for cosine decay. The win rate is also much less noisy for cosine decay, and consistently improves: 75\% at iters 5 and 10, 83\% at iters 15, 20, 25, 30.
+
+\paragraph{Extended Transfer Learning Pipeline.}
+%TODO: fill in here. Does the 6x6 improve the transfer benefits?
 
 \begin{figure}[t]
   \centering
@@ -221,7 +242,7 @@ One likely explanation is inductive bias: on a regular grid, convolutions share 
 all spatial positions and efficiently capture the local, directional patterns that dominate
 Breakthrough tactics.
 The GNN introduces additional parameters through attention pooling and edge feature MLPs, making
-it harder to optimise under a fixed 40-iteration budget with a single learning rate.
+it harder to optimize under a fixed 40-iteration budget with a single learning rate.
 The GNN policy loss plateau at $\approx$2.05 suggests the model converged to a saddle point or
 local minimum.
 A larger iteration budget, layer-wise or decaying learning rates, or a simplified GNN variant
@@ -246,19 +267,26 @@ consistent with this level of noise around a slowly moving mean.
 A larger evaluation budget (e.g., 50--100 games per checkpoint) would substantially reduce this
 variance in future runs.
 
+\paragraph{TD($\lambda$) baseline.}
+TD($\lambda$) was never able to beat its evaluator. We attribute this to the evaluator being too strong: it is given an explicit lookahead that TD is not able to rival within 40 iterations. The other models make use of MCTS which provides a one-step lookahead, but TD's value function is not strong enough to approximate that in the same number of iterations. This demonstrates the need for the AlphaZero approach.
+
+\paragraph{Learning Rate Schedule.}
+We have demonstrated that implementing a cosine decay learning rate scheduler significantly improves performance on GNN models. We speed up the learning, avoid plateaus, and reduce win rate variability. %TODO: rephrase variability?
+
+\paragraph{Extended Transfer Learning pipeline.}
+%TODO: fill in here.
+
 \section{Conclusion and Future Work}
 
 We successfully adapted AlphaGateau to Breakthrough, built a complete reproducible pipeline, and
 ran all four planned experiments to completion.
 The main empirical findings are: (1) the CNN baseline outperforms the GNN from scratch under the
-current 40-iteration budget, with the GNN's policy loss plateauing at a higher value; and (2)
+current 40-iteration budget, with the GNN's policy loss plateauing at a higher value; (2)
 transfer from 5$\times$5 pretraining meaningfully accelerates early 8$\times$8 learning but does
-not fully compensate for the GNN's convergence disadvantage versus the CNN.
+not fully compensate for the GNN's convergence disadvantage versus the CNN; (3) the TD learning fails to rival a greedy evaluator, demonstrating the need for MCTS lookahead; and (4) cosine LR scheduling considerably improves speed and performance.
 
 Promising future directions include: running a longer fine-tuning budget (60--80 iterations) to
-test whether the fine-tuned GNN can eventually match the CNN; tuning the GNN's learning rate
-schedule; running ablations that disable attention pooling or simplify edge features; increasing
-the evaluation game count to reduce win-rate noise; and repeating with the updated 256-ply cap
+test whether the fine-tuned GNN can eventually match the CNN; running ablations that disable attention pooling or simplify edge features; increasing the evaluation game count to reduce win-rate noise; and repeating with the updated 256-ply cap
 to eliminate any truncation artefacts from the current 192-ply limit.
 
 \section{Contributions and Acknowledgements}
@@ -267,7 +295,7 @@ to eliminate any truncation artefacts from the current 192-ply limit.
 Athmane Benarous focused on the JAX environment, training pipeline, Slurm orchestration, and
 report integration.
 Farooq Khan focused on the CNN baseline experiments, result analysis, and presentation assets.
-Andrew Saffar focused on the graph encoding, evaluation tooling, and write-up support.
+Andrew Saffar focused on the TD implementation, learning rate decay, extended transfer learning pipeline, and write-up support.
 
 \textbf{Acknowledgements.}
 We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
