@@ -104,19 +104,15 @@ This makes Breakthrough a clean testbed for our two questions: whether a GNN is 
 
 \section{Methodology}
 
-\paragraph{Environment and action space.}
-We implemented a custom \texttt{BreakthroughEnv(board\_size)} in JAX.
-States include the board array, a canonical observation tensor, a legal-action mask, the side to
-move, rewards, and terminal information.
-Actions use the fixed encoding
-\[
-  \texttt{action} = \texttt{from\_square} \times 3 + \texttt{move\_type},
-\]
+\paragraph{Environment and action encoding.}
+We implemented a custom Breakthrough envronment in JAX.
+States include the board array, an observation tensor, a legal-action mask, the side to move, rewards, and terminal game state.
+Actions use a fixed encoding $\texttt{action} = \texttt{from\_square} \times 3 + \texttt{move\_type}$,
 where \texttt{move\_type} $\in$ \{\texttt{forward}, \texttt{diag\_left}, \texttt{diag\_right}\}.
 We canonicalize the board so the player to move always advances upward, keeping both the tensor
 and graph interfaces board-size agnostic.
 
-\paragraph{Representations.}
+\paragraph{Model representations.}
 The CNN baseline uses a three-channel tensor (self pieces, opponent pieces, empty squares) fed
 into a residual convolutional network.
 The GNN constructs a graph with one node per square and directed move edges for both players.
