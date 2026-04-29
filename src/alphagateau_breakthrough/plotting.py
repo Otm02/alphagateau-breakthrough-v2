@@ -82,36 +82,43 @@ def _format_iteration_axis(ax, x_values: list[int]) -> None:
 
 def plot_scratch_comparison(
     gnn_run_dir: str | Path,
+    gnn_cosine_run_dir: str | Path,
     cnn_run_dir: str | Path,
     output_path: str | Path,
 ) -> None:
     gnn_eval_x, gnn_eval_y = _read_greedy_eval_points(gnn_run_dir)
+    gnn_cosine_eval_x, gnn_cosine_eval_y = _read_greedy_eval_points(gnn_cosine_run_dir)
     cnn_eval_x, cnn_eval_y = _read_greedy_eval_points(cnn_run_dir)
     gnn_metrics = _read_metrics(gnn_run_dir)
+    gnn_cosine_metrics = _read_metrics(gnn_cosine_run_dir)
     cnn_metrics = _read_metrics(cnn_run_dir)
 
     gnn_loss_x = [int(row["iteration"]) for row in gnn_metrics]
     gnn_policy_loss = [float(row["policy_loss"]) for row in gnn_metrics]
+    gnn_cosine_loss_x = [int(row["iteration"]) for row in gnn_cosine_metrics]
+    gnn_cosine_policy_loss = [float(row["policy_loss"]) for row in gnn_cosine_metrics]
     cnn_loss_x = [int(row["iteration"]) for row in cnn_metrics]
     cnn_policy_loss = [float(row["policy_loss"]) for row in cnn_metrics]
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     axes[0].plot(gnn_eval_x, gnn_eval_y, marker="o", color="#1f77b4", label="GNN scratch")
+    axes[0].plot(gnn_cosine_eval_x, gnn_cosine_eval_y, marker="d", color="#42b41f", label="GNN cosine decay scratch")
     axes[0].plot(cnn_eval_x, cnn_eval_y, marker="s", color="#ff7f0e", label="CNN scratch")
     axes[0].set_title("8x8 Scratch Evaluation")
     axes[0].set_xlabel("Iteration")
     axes[0].set_ylabel("Win rate vs greedy")
     axes[0].set_ylim(0.0, 1.0)
-    _format_iteration_axis(axes[0], sorted(set(gnn_eval_x + cnn_eval_x)))
+    _format_iteration_axis(axes[0], sorted(set(gnn_eval_x + gnn_cosine_eval_x + cnn_eval_x)))
     axes[0].grid(alpha=0.3)
     axes[0].legend()
 
     axes[1].plot(gnn_loss_x, gnn_policy_loss, color="#1f77b4", label="GNN policy loss")
+    axes[1].plot(gnn_cosine_loss_x, gnn_cosine_policy_loss, color="#42b41f", label="GNN cosine decay policy loss")
     axes[1].plot(cnn_loss_x, cnn_policy_loss, color="#ff7f0e", label="CNN policy loss")
     axes[1].set_title("8x8 Scratch Training")
     axes[1].set_xlabel("Iteration")
     axes[1].set_ylabel("Policy loss")
-    _format_iteration_axis(axes[1], sorted(set(gnn_loss_x + cnn_loss_x)))
+    _format_iteration_axis(axes[1], sorted(set(gnn_loss_x + gnn_cosine_loss_x + cnn_loss_x)))
     axes[1].grid(alpha=0.3)
     axes[1].legend()
 
@@ -258,6 +265,7 @@ def plot_encoding_visualisation(output_path: str | Path, board_size: int = 8) ->
 def generate_submission_figures(
     *,
     gnn_scratch_dir: str | Path,
+    gnn_cosine_scratch_dir: str | Path,
     cnn_scratch_dir: str | Path | None = None,
     pretrain_dir: str | Path,
     finetune_dir: str | Path,
@@ -275,6 +283,7 @@ def generate_submission_figures(
     else:
         plot_scratch_comparison(
             gnn_scratch_dir,
+            gnn_cosine_scratch_dir,
             cnn_scratch_dir,
             output_dir / "gnn_8x8_scratch_curve.png",
         )
