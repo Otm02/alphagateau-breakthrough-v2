@@ -3,7 +3,7 @@
 # Set SLURM_ACCOUNT and SLURM_QOS in your environment or pass --account / --qos to sbatch.
 # Example for McGill COMP-579: --account=winter2026-comp579 --qos=comp579-1gpu-12h
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --time=12:00:00
 #SBATCH --signal=B:USR1@120
 #SBATCH --output=logs/slurm/%x_%j.out
@@ -12,7 +12,7 @@
 # extended_transfer_pipeline.sbatch
 # Runs Part 1 (5x5 pretrain -> 6x6 finetune) and then submits Part 2 (8x8) as a dependent job.
 # Usage:
-#   REPO_ROOT=/path/to/repo sbatch scripts/extended_transfer_pipeline.sbatch
+#   REPO_ROOT=/path/to/repo sbatch slurm/extended_transfer_pipeline.sbatch
 
 set -euo pipefail
 
@@ -89,7 +89,7 @@ p2_cmd=(
   sbatch
   --partition=all
   --gres=gpu:1
-  --mem=16G
+  --mem=32G
   --time=12:00:00
   --output="${LOGS_DIR}/%x_%j.out"
   --error="${LOGS_DIR}/%x_%j.err"

@@ -42,6 +42,8 @@ def main() -> None:
     parser.add_argument("--max-plies-5x5", type=int, default=None)
     parser.add_argument("--max-plies-8x8", type=int, default=None)
     parser.add_argument("--eval-games", type=int, default=12)
+    parser.add_argument("--pretrain-preset", default="gnn_5x5_pretrain") 
+    parser.add_argument("--finetune-preset", default="gnn_8x8_finetune")
     args = parser.parse_args()
 
     if args.pretrained_checkpoint:
@@ -49,7 +51,7 @@ def main() -> None:
         pretrain_payload = load_checkpoint(args.pretrained_checkpoint)
     else:
         pretrain_config = build_config_from_preset(
-            EXPERIMENT_PRESETS["gnn_5x5_pretrain"],
+            EXPERIMENT_PRESETS[args.pretrain_preset],
             num_iterations=args.iterations_pretrain,
             selfplay_games=args.selfplay_games,
             num_simulations=args.num_simulations,
@@ -59,7 +61,7 @@ def main() -> None:
         pretrain_summary = train_experiment(
             pretrain_config,
             output_root=args.output_root,
-            run_name="gnn_5x5_pretrain",
+            run_name=args.pretrain_preset,
             resume=args.resume,
         )
         pretrain_payload = load_checkpoint(pretrain_summary["final_checkpoint"])
@@ -91,7 +93,7 @@ def main() -> None:
     write_json(Path(args.output_root) / "gnn_transfer_zero_shot.json", zero_shot_summary)
 
     finetune_config = build_config_from_preset(
-        EXPERIMENT_PRESETS["gnn_8x8_finetune"],
+        EXPERIMENT_PRESETS[args.finetune_preset],
         initial_checkpoint=pretrain_summary["final_checkpoint"],
         num_iterations=args.iterations_finetune,
         selfplay_games=args.selfplay_games,
@@ -102,7 +104,7 @@ def main() -> None:
     finetune_summary = train_experiment(
         finetune_config,
         output_root=args.output_root,
-        run_name="gnn_8x8_finetune",
+        run_name=args.finetune_preset,
         resume=args.resume,
     )
     summary = {

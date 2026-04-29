@@ -3,7 +3,7 @@
 # Set SLURM_ACCOUNT and SLURM_QOS in your environment or pass --account / --qos to sbatch.
 # Example for McGill COMP-579: --account=winter2026-comp579 --qos=comp579-1gpu-12h
 #SBATCH --gres=gpu:1
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --time=02:00:00
 #SBATCH --signal=B:USR1@120
 #SBATCH --output=logs/slurm/%x_%j.out
@@ -15,10 +15,12 @@ REPO_ROOT="${REPO_ROOT:?set REPO_ROOT to the cloned repository path on mimi}"
 ENV_NAME="${ENV_NAME:-comp579-breakthrough}"
 ENV_PREFIX="${ENV_PREFIX:-}"
 GNN_SCRATCH_DIR="${GNN_SCRATCH_DIR:?set GNN_SCRATCH_DIR}"
+GNN_COSINE_SCRATCH_DIR="${GNN_COSINE_SCRATCH_DIR:?set GNN_COSINE_SCRATCH_DIR}"
 CNN_SCRATCH_DIR="${CNN_SCRATCH_DIR:?set CNN_SCRATCH_DIR}"
 PRETRAIN_DIR="${PRETRAIN_DIR:?set PRETRAIN_DIR}"
 FINETUNE_DIR="${FINETUNE_DIR:?set FINETUNE_DIR}"
-HEAD_TO_HEAD_OUTPUT="${HEAD_TO_HEAD_OUTPUT:-artifacts/experiments/head_to_head_gnn_vs_cnn.json}"
+GNN_VS_CNN_OUTPUT="${GNN_VS_CNN_OUTPUT:-artifacts/experiments/head_to_head_gnn_vs_cnn.json}"
+GNN_COSINE_VS_CNN_OUTPUT="${GNN_COSINE_VS_CNN_OUTPUT:-artifacts/experiments/head_to_head_gnn_cosine_vs_cnn.json}"
 SUMMARY_OUTPUT="${SUMMARY_OUTPUT:-artifacts/experiments/postprocess_summary.json}"
 OUTPUT_DIR="${OUTPUT_DIR:-report/figures}"
 LOGS_DIR="${LOGS_DIR:-$REPO_ROOT/logs/slurm}"
@@ -34,10 +36,12 @@ activate_conda_target
 cmd=(
   python scripts/postprocess_experiments.py
   --gnn-scratch-dir "$GNN_SCRATCH_DIR"
+  --gnn-cosine-scratch-dir "$GNN_COSINE_SCRATCH_DIR"
   --cnn-scratch-dir "$CNN_SCRATCH_DIR"
   --pretrain-dir "$PRETRAIN_DIR"
   --finetune-dir "$FINETUNE_DIR"
-  --head-to-head-output "$HEAD_TO_HEAD_OUTPUT"
+  --gnn-vs-cnn-output "$GNN_VS_CNN_OUTPUT"
+  --gnn-cosine-vs-cnn-output "$GNN_COSINE_VS_CNN_OUTPUT"
   --summary-output "$SUMMARY_OUTPUT"
   --output-dir "$OUTPUT_DIR"
 )
