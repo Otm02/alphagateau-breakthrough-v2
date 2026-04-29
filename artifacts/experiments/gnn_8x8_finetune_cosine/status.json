@@ -1,0 +1,15 @@
+{
+  "experiment_name": "gnn_8x8_finetune_cosine",
+  "run_name": "gnn_8x8_finetune_cosine",
+  "board_size": 8,
+  "model_type": "gnn",
+  "target_iterations": 30,
+  "completed_iterations": 4,
+  "remaining_iterations": 26,
+  "status": "running",
+  "is_complete": false,
+  "interrupt_signal": null,
+  "latest_checkpoint": null,
+  "final_checkpoint": null,
+  "resume_state": "artifacts/experiments/gnn_8x8_finetune_cosine/latest_resume.pkl"
+}

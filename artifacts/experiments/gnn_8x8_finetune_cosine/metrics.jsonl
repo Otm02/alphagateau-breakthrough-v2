@@ -1,0 +1,4 @@
+{"iteration": 1, "replay_size": 16384, "policy_loss": 2.0087359519675374, "value_loss": 0.11282152900957954}
+{"iteration": 2, "replay_size": 32768, "policy_loss": 2.0270120603963733, "value_loss": 0.17517666922958597}
+{"iteration": 3, "replay_size": 49152, "policy_loss": 2.0676365150138736, "value_loss": 0.1835632469956181}
+{"iteration": 4, "replay_size": 50000, "policy_loss": 2.0808551238227286, "value_loss": 0.20486394624808915}
