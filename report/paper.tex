@@ -131,10 +131,11 @@ Unless otherwise noted, the learning rate is $10^{-3}$.
 \paragraph{Experiment configurations.}
 We ran four groups of experiments.
 First, in the 8$\times$8 scratch comparison, the CNN and GNN were trained from scratch for
-40 iterations\footnote{Fourty iterations were used for reason X, Y, Z.} %TODO outline why 40
+40 iterations\footnote{We used 40 iterations as the standard training budget for the main experiments because due to our single-GPU compute budget.}
 with 64 self-play games per iteration and a 192-ply move cap.
 Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterations using
-128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{Thirty iterations were used for finetuning for reason X,Y,Z.} %TODO outline why 30.
+128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.
+\footnote{Thirty iterations were used for fine-tuning to measure whether transfer learning improves early 8$\times$8 learning faster than from strach implementation. The goal was not to over optimize the finetuned model.}
 Third, we repeated selected GNN runs with cosine decay in place of a fixed learning rate to study
 whether a learning-rate schedule improved optimization.
 Fourth, we trained a TD($\lambda$) baseline using a value-only CNN with no policy head or MCTS.
