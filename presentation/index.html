@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AlphaGateau for Breakthrough</title>
+    <link rel="stylesheet" href="node_modules/reveal.js/dist/reset.css" />
+    <link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css" />
+    <link rel="stylesheet" href="node_modules/reveal.js/dist/theme/white.css" />
+    <style>
+      .reveal {
+        font-size: 30px;
+      }
+
+      .reveal table {
+        font-size: 0.75em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div
+        class="slides"
+        data-markdown="slides.md"
+        data-separator="^---$"
+        data-separator-vertical="^--$"
+      ></div>
+    </div>
+
+    <script src="node_modules/reveal.js/dist/reveal.js"></script>
+    <script src="node_modules/reveal.js/plugin/markdown/markdown.js"></script>
+    <script>
+      const deck = new Reveal({
+        hash: true,
+        plugins: [RevealMarkdown],
+      });
+
+      deck.initialize();
+    </script>
+  </body>
+</html>
