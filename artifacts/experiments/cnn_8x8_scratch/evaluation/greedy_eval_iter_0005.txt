@@ -1,0 +1,12 @@
+e2-f3
+h7-h6
+h2-g3
+h6-h5
+g3-g4
+h5xg4
+b2-c3
+g4xf3
+c3-d4
+f3xg2
+d4-e5
+g2xh1

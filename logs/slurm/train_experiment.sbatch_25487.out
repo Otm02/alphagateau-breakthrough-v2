@@ -1,0 +1,1 @@
+Running: python scripts/train_experiment.py gnn_8x8_scratch_cosine --output-root artifacts/experiments --run-name gnn_8x8_scratch_cosine --resume

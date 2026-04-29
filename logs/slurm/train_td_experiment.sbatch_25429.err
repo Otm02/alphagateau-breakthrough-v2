@@ -1,0 +1,49 @@
+Loaded cuda module: cuda/cuda-12.6
+/usr/local/pkgs/anaconda/lib/python3.9/site-packages/conda/base/context.py:202: FutureWarning: Adding 'defaults' to channel list implicitly is deprecated and will be removed in 25.3. 
+
+To remove this warning, please choose a default channel explicitly with conda's regular configuration system, e.g. by adding 'defaults' to the list of channels:
+
+  conda config --add channels defaults
+
+For more information see https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/use-condarc.html
+
+  deprecated.topic(
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/train_td_experiment.py", line 46, in <module>
+    main()
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/train_td_experiment.py", line 36, in main
+    summary = train_experiment(
+              ^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 498, in train_experiment
+    obs_buf, rewards_buf, dones_buf, lengths = collect_episodes(
+                                               ^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 145, in collect_episodes
+    return jax.vmap(lambda k: _single_episode(k, params))(rng_keys)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 145, in <lambda>
+    return jax.vmap(lambda k: _single_episode(k, params))(rng_keys)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 138, in _single_episode
+    final_state, obs_buf, rewards_buf, dones_buf, length = jax.lax.while_loop(
+                                                           ^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 126, in body
+    action = _greedy_action(state, params)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 96, in _greedy_action
+    vals = vals.squeeze(-1)  # (n_actions,)
+           ^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/array_methods.py", line 1473, in meth
+    return getattr(self.aval, name).fun(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/array_methods.py", line 418, in _squeeze
+    return lax_numpy.squeeze(self, axis=axis)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/lax_numpy.py", line 2327, in squeeze
+    return _squeeze(arr, _ensure_index_tuple(axis) if axis is not None else None)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/lax_numpy.py", line 2337, in _squeeze
+    return lax.squeeze(a, axis)
+           ^^^^^^^^^^^^^^^^^^^^
+ValueError: cannot select an axis to squeeze out which has size not equal to one, got shape=(75,) and dimensions=(0,)
+--------------------
+For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.

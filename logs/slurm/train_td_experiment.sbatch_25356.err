@@ -1,0 +1,79 @@
+Loaded cuda module: cuda/cuda-12.6
+/usr/local/pkgs/anaconda/lib/python3.9/site-packages/conda/base/context.py:202: FutureWarning: Adding 'defaults' to channel list implicitly is deprecated and will be removed in 25.3. 
+
+To remove this warning, please choose a default channel explicitly with conda's regular configuration system, e.g. by adding 'defaults' to the list of channels:
+
+  conda config --add channels defaults
+
+For more information see https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/use-condarc.html
+
+  deprecated.topic(
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 214, in _broadcast_shapes_uncached
+    return _try_broadcast_shapes(*rank_promoted_shapes, name='broadcast_shapes')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 127, in _try_broadcast_shapes
+    raise TypeError(f'{name} got incompatible shapes for broadcasting: '
+TypeError: broadcast_shapes got incompatible shapes for broadcasting: (1, 384), (384, 75), (1, 1).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 192, in broadcast_shapes
+    return _broadcast_shapes_cached(*shapes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/util.py", line 276, in wrapper
+    return cached(trace_context(), *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/util.py", line 270, in cached
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 198, in _broadcast_shapes_cached
+    return _broadcast_shapes_uncached(*shapes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 217, in _broadcast_shapes_uncached
+    raise ValueError(f"Incompatible shapes for broadcasting: shapes={list(shapes)}") from err
+ValueError: Incompatible shapes for broadcasting: shapes=[(384,), (384, 75), ()]
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 214, in _broadcast_shapes_uncached
+    return _try_broadcast_shapes(*rank_promoted_shapes, name='broadcast_shapes')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/lax/lax.py", line 127, in _try_broadcast_shapes
+    raise TypeError(f'{name} got incompatible shapes for broadcasting: '
+TypeError: broadcast_shapes got incompatible shapes for broadcasting: (1, 384), (384, 75), (1, 1).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/train_td_experiment.py", line 46, in <module>
+    main()
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/train_td_experiment.py", line 36, in main
+    summary = train_experiment(
+              ^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 365, in train_experiment
+    params, batch_stats, opt_state, loss = train_step(
+                                           ^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 102, in train_step
+    (loss, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 84, in loss_fn
+    (_, v), new_batch_stats = model(
+                              ^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/models.py", line 303, in __call__
+    logits = jnp.where(legal_action_mask, logits, jnp.finfo(logits.dtype).min)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/lax_numpy.py", line 2797, in where
+    return util._where(condition, x, y)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/util.py", line 289, in _where
+    condition, x_arr, y_arr = _broadcast_arrays(condition, x, y)
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/site-packages/jax/_src/numpy/util.py", line 256, in _broadcast_arrays
+    result_shape = lax.broadcast_shapes(*shapes)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: Incompatible shapes for broadcasting: shapes=[(384,), (384, 75), ()]
+--------------------
+For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.

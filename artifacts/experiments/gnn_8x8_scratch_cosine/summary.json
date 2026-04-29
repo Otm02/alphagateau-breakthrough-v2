@@ -1,0 +1,29 @@
+{
+  "experiment_name": "gnn_8x8_scratch_cosine",
+  "run_name": "gnn_8x8_scratch_cosine",
+  "board_size": 8,
+  "model_type": "gnn",
+  "final_checkpoint": "artifacts/experiments/gnn_8x8_scratch_cosine/checkpoints/final.pkl",
+  "final_iteration": 40,
+  "target_iterations": 40,
+  "status": "completed",
+  "resume_state": "artifacts/experiments/gnn_8x8_scratch_cosine/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 40,
+    "replay_size": 50000,
+    "policy_loss": 1.7908443268984746,
+    "value_loss": 0.1751760689377136,
+    "greedy_win_rate": 0.5833333333333334,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 0.4166666666666667
+  },
+  "latest_eval": {
+    "iteration": 40,
+    "wins": 7,
+    "draws": 0,
+    "losses": 5,
+    "win_rate": 0.5833333333333334,
+    "draw_rate": 0.0,
+    "loss_rate": 0.4166666666666667
+  }
+}

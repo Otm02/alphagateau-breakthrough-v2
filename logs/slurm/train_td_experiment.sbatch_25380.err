@@ -1,0 +1,28 @@
+Loaded cuda module: cuda/cuda-12.6
+/usr/local/pkgs/anaconda/lib/python3.9/site-packages/conda/base/context.py:202: FutureWarning: Adding 'defaults' to channel list implicitly is deprecated and will be removed in 25.3. 
+
+To remove this warning, please choose a default channel explicitly with conda's regular configuration system, e.g. by adding 'defaults' to the list of channels:
+
+  conda config --add channels defaults
+
+For more information see https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/use-condarc.html
+
+  deprecated.topic(
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/train_td_experiment.py", line 46, in <module>
+    main()
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/train_td_experiment.py", line 36, in main
+    summary = train_experiment(
+              ^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 365, in train_experiment
+    params, batch_stats, opt_state, loss = train_step(
+                                           ^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 102, in train_step
+    (loss, new_batch_stats), grads = jax.value_and_grad(loss_fn, has_aux=True)(
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/td_training.py", line 90, in loss_fn
+    (_, v_next), _ = model(
+    ^^^^^^^^^^^
+ValueError: too many values to unpack (expected 2)
+--------------------
+For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
