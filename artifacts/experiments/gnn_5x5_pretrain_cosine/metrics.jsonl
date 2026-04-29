@@ -22,3 +22,18 @@
 {"iteration": 22, "replay_size": 50000, "policy_loss": 1.2441973908686301, "value_loss": 0.30759588085238976}
 {"iteration": 23, "replay_size": 50000, "policy_loss": 1.1932245286493997, "value_loss": 0.3069897195021413}
 {"iteration": 24, "replay_size": 50000, "policy_loss": 1.123169926575906, "value_loss": 0.2958162171282017}
+{"iteration": 25, "replay_size": 50000, "policy_loss": 1.055476285507676, "value_loss": 0.28463568772152353, "greedy_win_rate": 1.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.0}
+{"iteration": 26, "replay_size": 50000, "policy_loss": 1.0351086531344815, "value_loss": 0.304094743245924}
+{"iteration": 27, "replay_size": 50000, "policy_loss": 1.0815643232396868, "value_loss": 0.32047354198143213}
+{"iteration": 28, "replay_size": 50000, "policy_loss": 1.114755454045099, "value_loss": 0.32767646912385195}
+{"iteration": 29, "replay_size": 50000, "policy_loss": 1.1685420581152741, "value_loss": 0.3300073133464354}
+{"iteration": 30, "replay_size": 50000, "policy_loss": 1.2232885015758754, "value_loss": 0.32911228555494326, "greedy_win_rate": 0.75, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.25}
+{"iteration": 31, "replay_size": 50000, "policy_loss": 1.2579576565422566, "value_loss": 0.3267099497870813}
+{"iteration": 32, "replay_size": 50000, "policy_loss": 1.2850946948867144, "value_loss": 0.3243408510974214}
+{"iteration": 33, "replay_size": 50000, "policy_loss": 1.3017493491365113, "value_loss": 0.32441183519233663}
+{"iteration": 34, "replay_size": 50000, "policy_loss": 1.2946561224634607, "value_loss": 0.32076330396147607}
+{"iteration": 35, "replay_size": 50000, "policy_loss": 1.276785928407796, "value_loss": 0.3165754078769348, "greedy_win_rate": 0.9166666666666666, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.08333333333333333}
+{"iteration": 36, "replay_size": 50000, "policy_loss": 1.238480833977957, "value_loss": 0.3145750161265136}
+{"iteration": 37, "replay_size": 50000, "policy_loss": 1.1942943833319997, "value_loss": 0.3167868994853713}
+{"iteration": 38, "replay_size": 50000, "policy_loss": 1.1509831546210754, "value_loss": 0.31829796456725895}
+{"iteration": 39, "replay_size": 50000, "policy_loss": 1.1200209274487367, "value_loss": 0.32473587139811316}
