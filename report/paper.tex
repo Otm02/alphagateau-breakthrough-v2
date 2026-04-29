@@ -117,7 +117,7 @@ reduce the chance of artificially truncated games.
 
 The TD baseline uses a value-only CNN with no policy head or MCTS. We use TD($\lambda$) with $\lambda$ = 0.7. Self-play uses $\epsilon$-greedy exploration. The 5$\times$5 uses 128 episodes per iteration and a 96-ply move cap, while 8$\times$8 uses 64 episodes and 256-ply cap. Both use a learning rate of $10^{-3}$ and run for 40 iterations.
 
-Following the 5$\times$5 to 8$\times$8 transfer learning experiment, we extend this pipeline to 5$\times$5 to 8$\times$8 to 8$\times$8 in an attempt to bridge the gap between board sizes. 
+Following the 5$\times$5 to 8$\times$8 transfer learning experiment, we extend this pipeline to 5$\times$5 to 6$\times$6 to 8$\times$8 in an attempt to bridge the gap between board sizes. 
 
 \paragraph{Evaluation.}
 Every five iterations we play 12 games against a greedy evaluator (always picking the
@@ -137,7 +137,7 @@ Figure~\ref{fig:encoding} illustrates the graph encoding.
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lrcc}
+\begin{tabular}{lrcl}
 \toprule
 Run & Iters & Peak win rate & Final win rate \\
 \midrule
@@ -148,7 +148,7 @@ CNN 8$\times$8 scratch                  & 40 & 1.00 @ iter 40 & 1.00 @ iter 40 \
 GNN 5$\times$5 pretrain                 & 40 & 1.00 @ iter 20 & 1.00 @ iter 40 \\
 GNN 8$\times$8 fine-tune                & 30 & 0.75 @ iter 15 & 0.67 @ iter 30 \\
 GNN 5$\times$5 pretrain (cosine decay)  & 40 & 1.00 @ iter 10 & 0.83 @ iter 40 \\
-GNN 8$\times$8 scratch (cosine decay)   & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 \\
+GNN 8$\times$8 scratch (cosine decay)   & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 (still improving) \\
 GNN 8$\times$8 fine-tune (cosine decay) & 30 & 0.83 @ iter 15 & 0.83 @ iter 30 \\
 \bottomrule
 \end{tabular}
@@ -187,7 +187,7 @@ is at 58\%, a persistent but modest advantage.
 Neither GNN variant approaches the CNN's 75\% win rate at iteration 30.
 
 \paragraph{TD($\lambda$) baseline.}
-TD($\lambda$) really struggles against the greedy evaluator: it is never able to win a game at any iteration of training and on either board size. On the 5$\times$5 board, the loss initially decreases (from 0.186 at iter 3 to 0.100 at iter 8) after a short spike at iteration 2 caused by the network outputting its first non-zero values. After that, loss slowly deteriorates to 0.146 at iter 40, with the number of transitions decreasing suggesting the model is converging to a fast-losing policy. On the 8$\times$8 board, we see a similar spike at iter 2, but the loss never improves from there. This indicates the model does not learn any meaningful information or favor any winning moves.
+TD($\lambda$) really struggles against the greedy evaluator: it is never able to win a game at any iteration of training and on either board size. On the 5$\times$5 board, we see a short spike at iteration 2 caused by the network outputting its first non-zero values. The loss then decreases from 0.186 at iter 3 to 0.100 at iter 8. After that, loss slowly deteriorates to 0.146 at iter 40, with the number of transitions decreasing suggesting the model is converging to a fast-losing policy. On the 8$\times$8 board, we see a similar spike at iter 2, but the loss never improves from there. This indicates the model does not learn any meaningful information or favor any winning moves.
 
 \paragraph{Cosine decay LR.}
 The cosine decay learning rate scheduler allows the GNN to reach 100\% win rate twice as fast as the fixed LR on the 5$\times$5 board. However, we see that the learning rate drops by the final iteration to 83\%. We attribute this to evaluation variance: the evaluator "got lucky". Neither the policy nor value losses showed any degradation corresponding to the win rate drop.
@@ -245,8 +245,8 @@ The GNN introduces additional parameters through attention pooling and edge feat
 it harder to optimize under a fixed 40-iteration budget with a single learning rate.
 The GNN policy loss plateau at $\approx$2.05 suggests the model converged to a saddle point or
 local minimum.
-A larger iteration budget, layer-wise or decaying learning rates, or a simplified GNN variant
-without attention pooling might close this gap.
+We hypothesize that larger iteration budget, layer-wise or decaying learning rates, or a simplified GNN variant
+without attention pooling might close this gap. The cosine decay experiments confirm this assumption: the GNN's policy loss is still decreasing at iteration 40, avoiding the plateau, and the final win rate improves.
 
 \paragraph{Transfer benefit and limits.}
 Transfer from 5$\times$5 pretraining produces a real, quantifiable early-training benefit:
