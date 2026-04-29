@@ -127,11 +127,33 @@ The GNN adds attention pooling over node embeddings to produce a global represen
 Self-play training uses 32 MCTS simulations per move, a 50k-sample replay buffer, and
 32-sample minibatches.
 Unless otherwise noted, the learning rate is $10^{-3}$.
+
+\paragraph{Experiment configurations.}
+We ran four groups of experiments.
+First, in the 8$\times$8 scratch comparison, the CNN and GNN were trained from scratch for
+40 iterations\footnote{Fourty iterations were used for reason X, Y, Z.} %TODO outline why 40
+with 64 self-play games per iteration and a 192-ply move cap.
+Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterations using
+128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{Thirty iterations were used for finetuning for reason X,Y,Z.} %TODO outline why 30.
+Third, we repeated selected GNN runs with cosine decay in place of a fixed learning rate to study
+whether a learning-rate schedule improved optimization.
+Fourth, we trained a TD($\lambda$) baseline using a value-only CNN with no policy head or MCTS.
+For TD($\lambda$), we use $\lambda = 0.7$ and $\epsilon$-greedy self-play; the 5$\times$5 run
+uses 128 episodes per iteration and a 96-ply move cap, while the 8$\times$8 run uses 64 episodes
+per iteration and a 256-ply move cap, with both running for 40 iterations at learning rate
+$10^{-3}$.
+We also explored an extended transfer pipeline of 5$\times$5 to 6$\times$6 to 8$\times$8 as an
+additional experiment aimed at bridging the gap between board sizes.
+
+\paragraph{Evaluation protocol.}
+Every five iterations we play 12 games against a greedy evaluator and record the win rate.
+For the policy-based agents, the greedy evaluator always picks the highest-policy action.
 After training, we run a 12-game head-to-head match between the final GNN and CNN scratch
 checkpoints.
 We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
 fine-tuning.
-Since our TD baseline has no policy head, it is evaluated using greedy value-based play (argmax of values of successor states) rather than MCTS.
+Since our TD baseline has no policy head, it is evaluated using greedy value-based play, selecting
+the action whose successor state has the highest predicted value rather than using MCTS.
 \section{Results}
 
 Table~\ref{tab:results} summarises all four completed experiments.
