@@ -115,28 +115,18 @@ and graph interfaces board-size agnostic.
 \paragraph{Model representations.}
 The CNN baseline uses a three-channel tensor (self pieces, opponent pieces, empty squares) fed
 into a residual convolutional network.
-The GNN constructs a graph with one node per square and directed move edges for both players.
+The GNN constructs a graph with one node per square and directed move edges for both players.\footnote{This is in line with the AlphaGateau paper.}
 Node features encode occupancy, normalized coordinates, and edge-of-board indicators; edge features
 encode move direction, owner, legality, capture structure, and goal-rank information.
+This graph construction preserves the same local feature schema across board sizes, which is the
+basis for our transfer experiments.
 
-\paragraph{Models and training.}
-All models use hidden size 64 and four residual layers.
+\paragraph{Learning architectures and training procedure.}
+For the AlphaZero-style agents, both the CNN and GNN use hidden size 64 and four residual layers.
 The GNN adds attention pooling over node embeddings to produce a global representation.
-Self-play runs for 40 iterations for both 8$\times$8 scratch experiments, 40 iterations for
-5$\times$5 pretraining, and 30 iterations for 8$\times$8 fine-tuning.
-Each iteration generates 64 self-play games (128 for 5$\times$5) with 32 MCTS simulations per
-move, adding samples to a 50k-sample replay buffer from which 32-sample minibatches are drawn.
-The learning rate is $10^{-3}$ throughout, and we ran variations of the GNN experiments using cosine decay as a learning rate scheduler.
-Both 8$\times$8 experiments used a 192-ply move cap; the repository now defaults to 256 plies to
-reduce the chance of artificially truncated games.
-
-The TD baseline uses a value-only CNN with no policy head or MCTS. We use TD($\lambda$) with $\lambda$ = 0.7. Self-play uses $\epsilon$-greedy exploration. The 5$\times$5 uses 128 episodes per iteration and a 96-ply move cap, while 8$\times$8 uses 64 episodes and 256-ply cap. Both use a learning rate of $10^{-3}$ and run for 40 iterations.
-
-Following the 5$\times$5 to 8$\times$8 transfer learning experiment, we extend this pipeline to 5$\times$5 to 6$\times$6 to 8$\times$8 in an attempt to bridge the gap between board sizes.
-
-\paragraph{Evaluation.}
-Every five iterations we play 12 games against a greedy evaluator (always picking the
-highest-policy action) and record the win rate.
+Self-play training uses 32 MCTS simulations per move, a 50k-sample replay buffer, and
+32-sample minibatches.
+Unless otherwise noted, the learning rate is $10^{-3}$.
 After training, we run a 12-game head-to-head match between the final GNN and CNN scratch
 checkpoints.
 We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
