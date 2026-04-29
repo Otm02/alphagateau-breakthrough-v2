@@ -22,3 +22,8 @@
 {"iteration": 22, "replay_size": 50000, "policy_loss": 1.542760857622999, "value_loss": 0.2758920130757532}
 {"iteration": 23, "replay_size": 50000, "policy_loss": 1.5221853759163626, "value_loss": 0.2718071927830443}
 {"iteration": 24, "replay_size": 50000, "policy_loss": 1.4869221690064356, "value_loss": 0.2730664547470788}
+{"iteration": 25, "replay_size": 50000, "policy_loss": 1.4502233773584403, "value_loss": 0.2617884760724903, "greedy_win_rate": 0.9166666666666666, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.08333333333333333}
+{"iteration": 26, "replay_size": 50000, "policy_loss": 1.4294211229884213, "value_loss": 0.2654164116948881}
+{"iteration": 27, "replay_size": 50000, "policy_loss": 1.4113554671769257, "value_loss": 0.26173709740769235}
+{"iteration": 28, "replay_size": 50000, "policy_loss": 1.4294975675861905, "value_loss": 0.2888891470979866}
+{"iteration": 29, "replay_size": 50000, "policy_loss": 1.4136866326521362, "value_loss": 0.29274224031540097}
