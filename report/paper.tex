@@ -1,19 +1,21 @@
 \documentclass{article}
 
 \IfFileExists{report/neurips_2023.sty}{\usepackage[final,nonatbib]{report/neurips_2023}}{\usepackage[final,nonatbib]{neurips_2023}}
-\usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{booktabs}
-\usepackage{enumitem}
 \usepackage{amsmath}
 \usepackage{url}
-
-\setlist[itemize]{leftmargin=1.1em, topsep=2pt, itemsep=1pt}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage[T1]{fontenc}
+\usepackage{caption}
 \graphicspath{{report/figures/}{figures/}}
 
-\title{AlphaGateau for Breakthrough:\\Graph-Based Self-Play and Cross-Board Transfer}
+\setlist[itemize]{leftmargin=1.1em, topsep=2pt, itemsep=1pt}
+
+\title{AlphaGateau for Breakthrough:\\A peice of cake?}
 
 \author{%
   Athmane Benarous \\
@@ -31,15 +33,14 @@
 \maketitle
 
 \begin{abstract}
-We adapt AlphaGateau from chess to the abstract strategy game Breakthrough using a custom JAX
-environment, a board-size-invariant graph encoder, and an AlphaZero-style self-play training loop.
+We adapt AlphaGateau from chess to the abstract strategy game Breakthrough using a board-size-invariant graph encoder, and an AlphaZero-style self-play training loop.
 We compare a graph neural network (GNN) against a convolutional baseline (CNN) on 8$\times$8
 Breakthrough over 40 self-play iterations, and also study knowledge transfer from 5$\times$5
 pretraining to 8$\times$8 fine-tuning.
-The CNN converges cleanly to 100\% greedy-evaluation win rate by iteration 40 while the GNN
+The CNN converges to 100\% greedy-evaluation win rate within 40 interations while the GNN
 plateaus at 42\% with high variance throughout training.
-Transfer from 5$\times$5 pretraining yields a strong early benefit---67\% win rate at iteration 5
-versus 17\% from scratch---but does not close the long-run gap with the CNN baseline.
+Transfer from 5$\times$5 pretraining yields a strong early benefit (67\% win rate at iteration 5
+versus 17\% from scratch) but does not close the long-run gap with the CNN baseline.
 In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
 Additionally, we evaluate a TD($\lambda$) baseline, which is unable to beat the greedy evaluator within 40 iterations. We also implement a learning rate schedule with cosine decay, which significantly improves the fine-tuning from 5$\times$5 to 8$\times$8. Finally, we attempt an extended 5$\times$5 to 6$\times$6 to 8$\times$8. This leads to... % TODO: add findings here
 % \emph{Roles}: Athmane Benarous led the training infrastructure and cluster orchestration; Farooq
@@ -48,21 +49,29 @@ Khan led experiments and analysis; Andrew Saffar led graph encoding and evaluati
 
 \section{Introduction}
 
-Breakthrough is a useful reinforcement-learning benchmark because its rules are simple but its
-tactics are strongly shaped by local geometry: pieces only move forward, captures are diagonal, and
-promotion to the opponent's back rank ends the game.
-That structure makes the game a natural candidate for graph-based state representations, where
-squares are nodes and directional moves are edges, rather than for purely image-like encodings.
 
-Our project addresses two questions.
-First, does an AlphaGateau-style GNN outperform a simpler CNN baseline on 8$\times$8 Breakthrough
-under a course-feasible self-play budget?
-Second, does the GNN's board-size-invariant representation make 5$\times$5~$\rightarrow$~8$\times$8
-transfer meaningful and useful?
-To answer both questions, we built a complete project pipeline: a JAX Breakthrough environment,
-graph construction, MCTS self-play, checkpointing with resume support, evaluation, figure
-generation, and Slurm orchestration for the McGill course cluster.
-We report a negative result on the first question and a qualified positive result on the second.
+Breakthrough is a two-player abstract strategy game played on an $8\times8$ board in which each side controls only pawns.
+Despite its simple rules, the game is strategically rich and has a large state space of approximately $1.5\times 10^{16}$ \cite{jonsson2025solving}.
+Figure~\ref{fig:rules} illustrates the starting position and the legal forward and diagonal-capture moves that define the game.
+
+Breakthrough is a useful testbed for studying learned representations in reinforcement learning.
+Its rules are simple, but successful play depends heavily on local geometry: pieces move only forward, captures are diagonal, and reaching the opponent's back rank ends the game.
+This structure makes the game a natural candidate for graph-based representations, in which squares are nodes and legal relations are edges rather than purely image-like grid encodings.
+It is especially attractive for transfer experiments because the same local move rules apply across board sizes.
+
+Our project studies two questions.
+First, under a fixed self-play training budget, does an AlphaGateau-style graph neural network (GNN) outperform a simpler convolutional neural network (CNN) baseline on 8$\times$8 Breakthrough?
+Second, does the GNN's board-size-invariant representation make transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning meaningful?
+To answer these questions, we built a JAX-based self-play training and evaluation pipeline for Breakthrough and compared graph and convolutional agents under matched settings.
+Our main findings are that the CNN baseline outperforms the GNN from scratch on 8$\times$8, while 5$\times$5 pretraining gives the GNN a clear early advantage during transfer without closing the full gap to the
+CNN.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.92\linewidth]{breakthrough_rules.png}
+  \caption{Breakthrough rules overview. \emph{Left}: the standard starting position on an 8$\times$8 board. \emph{Right}: example legal moves for White. A pawn may move one square straight forward into an empty square, or one square diagonally forward only when capturing an opposing pawn.}
+  \label{fig:rules}
+\end{figure}
 
 \section{Background}
 
@@ -70,18 +79,29 @@ AlphaZero-style agents combine self-play reinforcement learning with Monte Carlo
 (MCTS)~\cite{alphazero}.
 A neural network predicts a policy over actions and a scalar value estimate; MCTS then refines
 action selection during play, and the search distribution becomes a policy target for training.
-We use Gumbel MCTS from the \texttt{mctx} library~\cite{muzero}, which selects actions by
-differentiably perturbing the policy logits with Gumbel noise.
+We use Gumbel MCTS\footnote{using the \texttt{mctx} library}, which selects actions by
+differentiably perturbing the policy logits with Gumbel noise~\cite{muzero}.
 
 AlphaGateau~\cite{alphagateau} replaces the convolutional encoder in AlphaZero with a graph
 neural network, aiming to better represent the relational structure of board games.
 It uses graph attention~\cite{gat} with residual message passing layers.
 
-Breakthrough~\cite{breakthrough} is especially attractive for this idea because the same move
-rules apply on 5$\times$5 and 8$\times$8 boards.
-A fixed-size CNN processes 8$\times$8 boards but cannot naturally support cross-board transfer.
-A graph encoder can keep the same feature schema and architecture while only changing the number
-of nodes and edges.
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play learning.
+Early work combined race patterns with job-level proof-number search to solve the 6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}.
+More recently, the 6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
+race patterns, proof-number-based search, and a neural-network-guided job scheduler~\cite{jonsson2025solving}.
+These results show that, despite simple rules, Breakthrough is strategically rich enough to support substantial search and solving research.
+
+Those exact-solving systems aim to prove the game-theoretic value of positions.
+Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study whether learned policy/value models can play effectively under self-play.
+In particular, we care about representation quality and cross-board transfer rather than formal game-theory optimality.
+
+Breakthrough~\cite{breakthrough} is especially attractive for this representation question because the same local move rules apply on both 5$\times$5 and 8$\times$8 boards.
+A fixed-size CNN processes an 8$\times$8 grid directly but does not naturally reuse the same architecture across board sizes.
+By contrast, a graph encoder can preserve the same feature schema while changing only the number of nodes and edges.
+This makes Breakthrough a clean testbed for our two questions: whether a GNN is competitive with a CNN under the same RL budget, and whether a board-size-invariant graph representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful.
+
+
 
 \section{Methodology}
 
@@ -117,7 +137,7 @@ reduce the chance of artificially truncated games.
 
 The TD baseline uses a value-only CNN with no policy head or MCTS. We use TD($\lambda$) with $\lambda$ = 0.7. Self-play uses $\epsilon$-greedy exploration. The 5$\times$5 uses 128 episodes per iteration and a 96-ply move cap, while 8$\times$8 uses 64 episodes and 256-ply cap. Both use a learning rate of $10^{-3}$ and run for 40 iterations.
 
-Following the 5$\times$5 to 8$\times$8 transfer learning experiment, we extend this pipeline to 5$\times$5 to 6$\times$6 to 8$\times$8 in an attempt to bridge the gap between board sizes. 
+Following the 5$\times$5 to 8$\times$8 transfer learning experiment, we extend this pipeline to 5$\times$5 to 6$\times$6 to 8$\times$8 in an attempt to bridge the gap between board sizes.
 
 \paragraph{Evaluation.}
 Every five iterations we play 12 games against a greedy evaluator (always picking the
@@ -296,42 +316,15 @@ Athmane Benarous focused on the JAX environment, training pipeline, Slurm orches
 report integration.
 Farooq Khan focused on the CNN baseline experiments, result analysis, and presentation assets.
 Andrew Saffar focused on the TD implementation, learning rate decay, extended transfer learning pipeline, and write-up support.
+Farooq Khan focused on the CNN baseline experiments, result analysis, report, and presentation.
+Andrew Saffar focused on the graph encoding, evaluation tooling, and write-up support.
 
 \textbf{Acknowledgements.}
 We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
 Optax, Jraph, MCTX, and the McGill department GPU infrastructure on \texttt{mimi.cs.mcgill.ca}.
 
-\begin{thebibliography}{9}
+\bibliographystyle{plain} % Defines the style
+\bibliography{references}  % Points to references.bib
 
-\bibitem{alphazero}
-D.~Silver et al.
-\newblock A general reinforcement learning algorithm that masters chess, shogi, and Go through
-self-play.
-\newblock \emph{Science}, 362(6419):1140--1144, 2018.
-
-\bibitem{muzero}
-I.~Antonoglou, T.~Hubert, A.~Guez, et al.
-\newblock Policy improvement by planning with Gumbel.
-\newblock \emph{ICLR}, 2022.
-
-\bibitem{alphagateau}
-A.~Kulenkampff.
-\newblock Enhancing Chess Reinforcement Learning with Graph Representation (AlphaGateau).
-\newblock 2024.
-
-\bibitem{gat}
-P.~Veli\v{c}kovi\'{c} et al.
-\newblock Graph attention networks.
-\newblock \emph{ICLR}, 2018.
-
-\bibitem{breakthrough}
-Breakthrough (board game).
-\newblock \url{https://en.wikipedia.org/wiki/Breakthrough_(board_game)}.
-
-\bibitem{repo}
-AlphaGateau repository.
-\newblock \url{https://github.com/akulen/AlphaGateau}.
-
-\end{thebibliography}
 
 \end{document}
