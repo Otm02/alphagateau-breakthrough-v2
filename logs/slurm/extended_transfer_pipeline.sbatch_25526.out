@@ -1,1 +1,2 @@
 Running Part 1: python scripts/run_extended_transfer_pipeline_p1.py --output-root artifacts/experiments --resume
+Training gnn_5x5_pretrain_cosine ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 40/40 0:39:42

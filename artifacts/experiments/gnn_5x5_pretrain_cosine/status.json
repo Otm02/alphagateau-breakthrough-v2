@@ -4,12 +4,12 @@
   "board_size": 5,
   "model_type": "gnn",
   "target_iterations": 40,
-  "completed_iterations": 39,
-  "remaining_iterations": 1,
-  "status": "running",
-  "is_complete": false,
+  "completed_iterations": 40,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
   "interrupt_signal": null,
-  "latest_checkpoint": "artifacts/experiments/gnn_5x5_pretrain_cosine/checkpoints/iter_0035.pkl",
-  "final_checkpoint": null,
+  "latest_checkpoint": "artifacts/experiments/gnn_5x5_pretrain_cosine/checkpoints/final.pkl",
+  "final_checkpoint": "artifacts/experiments/gnn_5x5_pretrain_cosine/checkpoints/final.pkl",
   "resume_state": "artifacts/experiments/gnn_5x5_pretrain_cosine/latest_resume.pkl"
 }
