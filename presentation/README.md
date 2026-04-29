@@ -1,6 +1,21 @@
-# Presentation Assets
+## setup 
 
-- Slide script: [slides.md](slides.md)
-- Speaker notes: [speaker_notes.md](speaker_notes.md)
+```bash
+cd presentation
+npm install
+```
 
-The slide deck is intentionally short and maps to a 4-minute presentation. Reuse `report/figures/encoding_visualisation.png` as the static gameplay visual on the methodology slide.
+### Run locally
+
+Serve the folder over HTTP so the browser can fetch `slides.md`:
+
+```bash
+cd presentation
+npm dev
+```
+
+Then open `http://localhost:5173`.
+
+The slide deck is intentionally short and maps to a 4-minute presentation. If you add the
+static gameplay visual later, reference it from this folder with a relative path such as
+`../report/figures/encoding_visualisation.png`.

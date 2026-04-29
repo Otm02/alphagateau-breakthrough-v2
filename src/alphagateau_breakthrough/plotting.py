@@ -8,6 +8,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+BOARD_LIGHT = "#f3e7c9"
+BOARD_DARK = "#b08a5a"
+BOARD_EDGE = "#4f3d27"
+WHITE_PIECE_FILL = "#fffaf0"
+WHITE_PIECE_EDGE = "#2b2118"
+BLACK_PIECE_FILL = "#1e1e1e"
+BLACK_PIECE_EDGE = "#f5f5f5"
+ARROW_COLOR = "#2b6ea6"
+
+
 def _ensure_dir(path: str | Path) -> Path:
     path = Path(path)
     path.mkdir(parents=True, exist_ok=True)
@@ -78,6 +88,74 @@ def _format_iteration_axis(ax, x_values: list[int]) -> None:
         value = x_values[0]
         ax.set_xlim(value - 0.5, value + 0.5)
         ax.set_xticks([value])
+
+
+def _draw_breakthrough_board(
+    ax,
+    position: np.ndarray,
+    *,
+    board_size: int,
+    piece_size: float = 260,
+    tick_label_size: int = 10,
+) -> None:
+    for row in range(board_size):
+        for col in range(board_size):
+            color = BOARD_LIGHT if (row + col) % 2 == 0 else BOARD_DARK
+            ax.add_patch(
+                plt.Rectangle(
+                    (col, row),
+                    1,
+                    1,
+                    facecolor=color,
+                    edgecolor=BOARD_EDGE,
+                    linewidth=0.8,
+                )
+            )
+            piece = position[row, col]
+            if piece == 1:
+                ax.scatter(
+                    col + 0.5,
+                    row + 0.5,
+                    s=piece_size,
+                    facecolor=WHITE_PIECE_FILL,
+                    edgecolor=WHITE_PIECE_EDGE,
+                    linewidth=1.0,
+                    zorder=3,
+                )
+            elif piece == -1:
+                ax.scatter(
+                    col + 0.5,
+                    row + 0.5,
+                    s=piece_size,
+                    facecolor=BLACK_PIECE_FILL,
+                    edgecolor=BLACK_PIECE_EDGE,
+                    linewidth=0.8,
+                    zorder=3,
+                )
+
+    files = [chr(ord("a") + idx) for idx in range(board_size)]
+    ranks = [str(board_size - idx) for idx in range(board_size)]
+    ax.set_xticks(np.arange(board_size) + 0.5, files)
+    ax.set_yticks(np.arange(board_size) + 0.5, ranks)
+    ax.set_xlim(0, board_size)
+    ax.set_ylim(0, board_size)
+    ax.invert_yaxis()
+    ax.set_aspect("equal")
+    ax.tick_params(length=0, labelsize=tick_label_size)
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.0)
+        spine.set_color(BOARD_EDGE)
+
+
+def _arrow_style(*, alpha: float = 0.85, linewidth: float = 1.8) -> dict:
+    return {
+        "arrowstyle": "->",
+        "lw": linewidth,
+        "color": ARROW_COLOR,
+        "alpha": alpha,
+        "shrinkA": 8,
+        "shrinkB": 8,
+    }
 
 
 def plot_scratch_comparison(
@@ -227,15 +305,7 @@ def plot_encoding_visualisation(output_path: str | Path, board_size: int = 8) ->
     graph = state_to_graph(state._board, state.legal_action_mask)
     board = np.array(state._board)
     fig, ax = plt.subplots(figsize=(5, 5))
-    for row in range(board_size):
-        for col in range(board_size):
-            color = "#f0d9b5" if (row + col) % 2 == 0 else "#b58863"
-            ax.add_patch(plt.Rectangle((col, row), 1, 1, color=color))
-            piece = board[row, col]
-            if piece == 1:
-                ax.text(col + 0.5, row + 0.5, "W", ha="center", va="center", fontsize=14, color="#111111")
-            elif piece == -1:
-                ax.text(col + 0.5, row + 0.5, "B", ha="center", va="center", fontsize=14, color="#ffffff")
+    _draw_breakthrough_board(ax, board, board_size=board_size, piece_size=240)
     senders = np.array(graph.senders[: board_size * board_size * 3])
     receivers = np.array(graph.receivers[: board_size * board_size * 3])
     legal = np.array(graph.edges[: board_size * board_size * 3, 2]) > 0.5
@@ -248,14 +318,9 @@ def plot_encoding_visualisation(output_path: str | Path, board_size: int = 8) ->
             "",
             xy=(to_col + 0.5, to_row + 0.5),
             xytext=(from_col + 0.5, from_row + 0.5),
-            arrowprops={"arrowstyle": "->", "lw": 1.0, "color": "#1f77b4", "alpha": 0.5},
+            arrowprops=_arrow_style(alpha=0.6, linewidth=1.6),
         )
-    ax.set_xlim(0, board_size)
-    ax.set_ylim(0, board_size)
-    ax.set_xticks(range(board_size + 1))
-    ax.set_yticks(range(board_size + 1))
-    ax.set_aspect("equal")
-    ax.set_title("Canonical Breakthrough Encoding and Legal Edges")
+    ax.set_title("Canonical Breakthrough Encoding and Legal Edges", fontsize=12)
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
@@ -274,40 +339,14 @@ def plot_breakthrough_rules(output_path: str | Path, board_size: int = 8) -> Non
 
     fig, axes = plt.subplots(1, 2, figsize=(9, 4.8))
 
-    def draw_board(ax, position: np.ndarray, *, show_moves: bool) -> None:
-        for row in range(board_size):
-            for col in range(board_size):
-                color = "#f3e7c9" if (row + col) % 2 == 0 else "#b08a5a"
-                ax.add_patch(plt.Rectangle((col, row), 1, 1, facecolor=color, edgecolor="#4f3d27", linewidth=0.8))
-                piece = position[row, col]
-                if piece == 1:
-                    ax.scatter(col + 0.5, row + 0.5, s=260, facecolor="#fffaf0", edgecolor="#2b2118", linewidth=1.0, zorder=3)
-                elif piece == -1:
-                    ax.scatter(col + 0.5, row + 0.5, s=260, facecolor="#1e1e1e", edgecolor="#f5f5f5", linewidth=0.8, zorder=3)
-
-        if show_moves:
-            arrow = {"arrowstyle": "->", "lw": 1.8, "color": "#111111", "shrinkA": 8, "shrinkB": 8}
-            ax.annotate("", xy=(2.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
-            ax.annotate("", xy=(3.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
-            ax.annotate("", xy=(4.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
-            ax.annotate("", xy=(1.5, 3.5), xytext=(0.5, 2.5), arrowprops=arrow, zorder=4)
-
-        files = [chr(ord("a") + idx) for idx in range(board_size)]
-        ranks = [str(board_size - idx) for idx in range(board_size)]
-        ax.set_xticks(np.arange(board_size) + 0.5, files)
-        ax.set_yticks(np.arange(board_size) + 0.5, ranks)
-        ax.set_xlim(0, board_size)
-        ax.set_ylim(0, board_size)
-        ax.invert_yaxis()
-        ax.set_aspect("equal")
-        ax.tick_params(length=0, labelsize=10)
-        for spine in ax.spines.values():
-            spine.set_linewidth(1.0)
-            spine.set_color("#4f3d27")
-
-    draw_board(axes[0], board, show_moves=False)
+    _draw_breakthrough_board(axes[0], board, board_size=board_size)
     axes[0].set_title("Starting Position", fontsize=12)
-    draw_board(axes[1], example, show_moves=True)
+    _draw_breakthrough_board(axes[1], example, board_size=board_size)
+    arrow = _arrow_style()
+    axes[1].annotate("", xy=(2.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
+    axes[1].annotate("", xy=(3.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
+    axes[1].annotate("", xy=(4.5, 3.5), xytext=(3.5, 2.5), arrowprops=arrow, zorder=4)
+    axes[1].annotate("", xy=(1.5, 3.5), xytext=(0.5, 2.5), arrowprops=arrow, zorder=4)
     axes[1].set_title("Legal White Moves", fontsize=12)
 
     fig.tight_layout()
