@@ -1,1 +1,3 @@
 Loaded cuda module: cuda/cuda-12.6
+/var/spool/slurmd/job25539/slurm_script: line 70: 3916756 Killed                  "${cmd[@]}"
+slurmstepd: error: Detected 2 oom_kill events in StepId=25539.batch. Some of the step tasks have been OOM Killed.
