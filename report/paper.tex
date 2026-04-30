@@ -15,7 +15,7 @@
 
 \setlist[itemize]{leftmargin=1.1em, topsep=2pt, itemsep=1pt}
 
-\title{AlphaGateau for Breakthrough:\\A piece of cake?}
+\title{AlphaGateau for Breakthrough: A piece of cake?}
 
 \author{%
   Athmane Benarous \\
@@ -33,17 +33,16 @@
 \maketitle
 
 \begin{abstract}
-We adapt AlphaGateau from chess to the abstract strategy game Breakthrough using a board-size-invariant graph encoder, and an AlphaZero-style self-play training loop.
-We compare a graph neural network (GNN) against a convolutional baseline (CNN) on 8$\times$8
-Breakthrough over 40 self-play iterations, and also study knowledge transfer from 5$\times$5
-pretraining to 8$\times$8 fine-tuning.
+
+We study whether a board-size-invariant graph encoder improves self-play learning and cross-board transfer in the game Breakthrough.
+Using an AlphaZero-style training loop,
+we compare a graph neural network (GNN) with a convolutional neural network (CNN) baseline on 8$\times$8 play
+and evaluate transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning.
 The CNN converges to 100\% greedy-evaluation win rate within 40 iterations while the GNN
 plateaus at 42\% with high variance throughout training.
-Transfer from 5$\times$5 pretraining yields a strong early benefit (67\% win rate at iteration 5
-versus 17\% from scratch) but does not close the long-run gap with the CNN baseline.
-In a direct 12-game match, the CNN wins 10 of 12 games (83\%).
-Additionally, we evaluate a TD($\lambda$) baseline, which is unable to beat the greedy evaluator within 40 iterations. We also implement a learning rate schedule with cosine decay, which significantly improves the fine-tuning from 5$\times$5 to 8$\times$8. Finally, we attempt an extended 5$\times$5 to 6$\times$6 to 8$\times$8. This leads to... % TODO: add findings here
-% \emph{Roles}: Athmane Benarous led the training infrastructure and cluster orchestration; Farooq
+Pretraining on 5$\times$5 provides a strong early transfer benefit, improving iteration-5 win rate on 8$\times$8 from 17\% to 67\%,
+but does not eliminate the CNN's long-run advantage.
+In a direct 12-game match, the CNN defeats the GNN 10 games to 2.
 \end{abstract}
 
 \section{Introduction}
