@@ -9,6 +9,7 @@
 \usepackage{url}
 \usepackage{geometry}
 \usepackage{enumitem}
+\usepackage{float}
 \usepackage[T1]{fontenc}
 \usepackage{caption}
 \graphicspath{{report/figures/}{figures/}}
@@ -56,7 +57,7 @@ board-size-invariant representation makes 5$\times$5~$\rightarrow$~8$\times$8 tr
 meaningful. Under our training budget, the CNN is stronger from scratch, while 5$\times$5
 pretraining gives the GNN a clear early transfer benefit without closing the full gap.
 
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
   \includegraphics[width=0.85\linewidth]{breakthrough_rules.png}
   \caption{Breakthrough rules overview. \emph{Left}: the standard starting position on an 8$\times$8 board. \emph{Right}: example legal moves for White. A pawn may move one square straight forward into an empty square, or one square diagonally forward only when capturing an opposing pawn.}
