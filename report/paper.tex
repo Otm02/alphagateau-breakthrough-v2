@@ -153,8 +153,9 @@ interpreted as stagewise transfer rather than a direct measure of catastrophic f
 \section{Results}
 
 Table~\ref{tab:results} summarises the main scratch, transfer, cosine-scheduled, and progressive-transfer runs.
-Figure~\ref{fig:scratch} visualises the main 8$\times$8 scratch comparison, while the progressive
-transfer curve is deferred to Appendix~\ref{app:additional_curves}.
+Table~\ref{tab:head_to_head} reports direct 12-game matches between the final CNN checkpoint and
+each final GNN variant. Figure~\ref{fig:scratch} visualises the main 8$\times$8 scratch
+comparison, while the progressive transfer curve is deferred to Appendix~\ref{app:additional_curves}.
 
 \begin{table}[t]
 \centering
@@ -179,14 +180,33 @@ and progressive-transfer runs are included because they materially change the tr
 \label{tab:results}
 \end{table}
 
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Final GNN variant & Wins & Losses & Win rate \\
+\midrule
+Scratch GNN                         & 2 & 10 & 0.17 \\
+Scratch GNN (cosine decay)          & 1 & 11 & 0.08 \\
+Direct 5$\times$5$\rightarrow$8$\times$8 transfer (cosine) & 4 & 8 & 0.33 \\
+Progressive 5$\times$5$\rightarrow$6$\times$6$\rightarrow$8$\times$8 transfer (cosine) & 5 & 7 & 0.42 \\
+\bottomrule
+\end{tabular}
+\caption{Direct 12-game head-to-head matches against the final CNN 8$\times$8 scratch checkpoint.
+These results are more variable than the greedy-evaluator curves because each estimate is based on
+only 12 games, but they show how much each GNN variant narrows the final gap to the CNN.}
+\label{tab:head_to_head}
+\end{table}
+
 \paragraph{Scratch comparison.}
 The CNN and GNN both start near zero win rate but diverge sharply after iteration 15. By iteration
 40, the CNN reaches 1.00 greedy-evaluation win rate while the scratch GNN finishes at 0.42
 (Table~\ref{tab:results}). A direct 12-game match between the final checkpoints confirms that gap:
-the CNN wins 10 games to 2. Figure~\ref{fig:scratch} shows the same pattern in training: the CNN
-improves steadily through iteration 40, while the GNN peaks earlier and then oscillates. The
-policy-loss panel supports the same interpretation, with the GNN plateauing near 2.05 while the
-CNN continues to improve.
+the CNN wins 10 games to 2 (Table~\ref{tab:head_to_head}). Figure~\ref{fig:scratch} shows the same
+pattern in training: the CNN improves steadily through iteration 40, while the GNN peaks earlier
+and then oscillates. The policy-loss panel supports the same interpretation, with the GNN
+plateauing near 2.05 while the CNN continues to improve.
 
 \paragraph{Transfer learning.}
 The 5$\times$5 pretrained GNN converges cleanly, reaching 1.00 win rate by iteration 20 and
@@ -204,20 +224,27 @@ cross-board knowledge transfer.
 By iteration 30, the cosine fine-tuned model reaches 83\% while the fixed-LR scratch GNN at the
 same iteration is at 58\%, a persistent advantage.
 The final transfer checkpoint still trails the final CNN checkpoint overall, but it exceeds the
-CNN's iteration-30 win rate of 75\%.
+CNN's iteration-30 win rate of 75\%. In direct final-checkpoint play, it narrows the head-to-head
+gap from 2 wins in 12 games for the scratch GNN to 4 wins in 12 games against the same CNN
+(Table~\ref{tab:head_to_head}).
 
 \paragraph{Cosine decay LR.}
 The cosine schedule improves optimization most clearly for the GNN runs. On 8$\times$8 scratch,
 it raises the final GNN win rate from 0.42 to 0.58, and in direct
 5$\times$5~$\rightarrow$~8$\times$8 transfer it raises the final fine-tuned win rate from 0.67 to
-0.83. This suggests that part of the GNN's underperformance is optimization-limited rather than
-purely representational.
+0.83. However, the cosine-scheduled scratch GNN still loses 11 of 12 direct games against the CNN,
+so this scheduling gain does not translate into a stronger final head-to-head result under our
+small-match evaluation budget. This suggests that part of the GNN's underperformance is
+optimization-limited rather than purely representational, but also that greedy-evaluator win rate
+and final checkpoint strength are not perfectly aligned.
 
 \paragraph{Progressive transfer pipeline.}
 The stagewise 5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline helps on the
 intermediate 6$\times$6 task, but it does not improve the final 8$\times$8 result. The final
 progressive 8$\times$8 checkpoint ends at 0.58, below the 0.83 achieved by direct cosine
-transfer. Full curves and interpretation are deferred to Appendix~\ref{app:additional_curves}.
+transfer. Yet in direct play against the final CNN checkpoint, the progressive model performs best
+among the GNN variants, improving to 5 wins in 12 games (Table~\ref{tab:head_to_head}). Full
+curves and interpretation are deferred to Appendix~\ref{app:additional_curves}.
 
 \paragraph{TD($\lambda$) baseline.}
 The value-only TD($\lambda$) baseline remains clearly weaker than the MCTS-based agents; full
@@ -264,7 +291,9 @@ advantage that compounds.
 Cosine decay strengthens this interpretation: it improves the final direct-transfer checkpoint to
 0.83 and removes the late-stage drop visible in the fixed-LR transfer run. An interesting
 follow-up is whether increasing the fine-tuning budget beyond 30 iterations would allow the
-fine-tuned GNN to match or surpass the CNN.
+fine-tuned GNN to match or surpass the CNN. The direct head-to-head table sharpens this point:
+transfer does not overturn the final ranking, but it does reduce the gap substantially, with the
+best GNN variant improving from 2 wins to 5 wins in 12 games against the same CNN.
 
 \paragraph{Evaluation noise.}
 Each win-rate data point comes from 12 games, giving a standard deviation of approximately
