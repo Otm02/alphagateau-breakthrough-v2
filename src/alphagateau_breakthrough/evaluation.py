@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 
@@ -115,7 +113,11 @@ def play_game(
                 action = 0
             else:
                 action = int(legal[int(jax.random.randint(subkey, (), 0, legal.size))])
-        transcript.append(action_string(state._board, state.current_player, jnp.int32(action), env.board_size))
+        transcript.append(
+            action_string(
+                state._board, state.current_player, jnp.int32(action), env.board_size
+            )
+        )
         state = env.step(state, jnp.int32(action))
         if bool(state.terminated):
             break
@@ -184,6 +186,7 @@ def evaluate_against_greedy(
         "loss_rate": losses / total,
     }
 
+
 def evaluate_td_against_greedy(
     *,
     env: BreakthroughEnv,
@@ -234,6 +237,7 @@ def evaluate_td_against_greedy(
         "loss_rate": losses / total,
     }
 
+
 def evaluate_checkpoint_pair(
     checkpoint_a: str | Path,
     checkpoint_b: str | Path,
@@ -260,12 +264,13 @@ def evaluate_checkpoint_pair(
             sync_updates=config_a.get("sync_updates", None),
         )
     model_a = build_model_manager(
-        model_id=Path(checkpoint_a).stem, model_type=config_a["model_type"],
-        board_size=8, inner_size=config_a["hidden_size"],
+        model_id=Path(checkpoint_a).stem,
+        model_type=config_a["model_type"],
+        board_size=8,
+        inner_size=config_a["hidden_size"],
         n_res_layers=config_a["n_res_layers"],
         **gnn_cnn_kwargs,
     )
-
 
     gnn_cnn_kwargs = {}
     if config_b["model_type"] in ("gnn", "cnn"):
@@ -278,13 +283,16 @@ def evaluate_checkpoint_pair(
             sync_updates=config_b.get("sync_updates", None),
         )
     model_b = build_model_manager(
-        model_id=Path(checkpoint_b).stem, model_type=config_b["model_type"],
-        board_size=8, inner_size=config_b["hidden_size"],
+        model_id=Path(checkpoint_b).stem,
+        model_type=config_b["model_type"],
+        board_size=8,
+        inner_size=config_b["hidden_size"],
         n_res_layers=config_b["n_res_layers"],
         **gnn_cnn_kwargs,
     )
     wins = draws = losses = 0
     move_log = None
+
     def _make_player(model, payload, n_sim):
         params = {"params": payload["params"], "batch_stats": payload["batch_stats"]}
         if payload["config"]["model_type"] == "td":

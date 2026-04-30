@@ -1,0 +1,2 @@
+{"iteration": 1, "replay_size": 64, "policy_loss": 3.2795716524124146, "value_loss": 0.0}
+{"iteration": 2, "replay_size": 128, "policy_loss": 3.232693910598755, "value_loss": 0.0, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}

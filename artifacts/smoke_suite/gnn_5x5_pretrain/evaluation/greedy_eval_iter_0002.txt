@@ -1,0 +1,8 @@
+b2-b3
+c4xb3
+a2xb3
+a4xb3
+d2-d3
+b3xc2
+a1-a2
+c2xd1

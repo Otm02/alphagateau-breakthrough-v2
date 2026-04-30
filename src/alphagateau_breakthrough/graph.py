@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import NamedTuple
 
 import jax
@@ -16,7 +14,9 @@ class BreakthroughGraphsTuple(NamedTuple):
     action_edge_indices: jnp.ndarray
 
 
-def _current_player_edge_features(board: jnp.ndarray, legal_action_mask: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+def _current_player_edge_features(
+    board: jnp.ndarray, legal_action_mask: jnp.ndarray
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     size = board.shape[0]
     n_nodes = size * size
     senders = jnp.repeat(jnp.arange(n_nodes, dtype=jnp.int32), 3)
@@ -47,7 +47,9 @@ def _current_player_edge_features(board: jnp.ndarray, legal_action_mask: jnp.nda
     return senders, receivers, edge_features
 
 
-def _opponent_edge_features(board: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
+def _opponent_edge_features(
+    board: jnp.ndarray,
+) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     size = board.shape[0]
     n_nodes = size * size
     senders = jnp.repeat(jnp.arange(n_nodes, dtype=jnp.int32), 3)
@@ -82,7 +84,9 @@ def _opponent_edge_features(board: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarra
     return senders, receivers, edge_features
 
 
-def _single_state_to_graph(board: jnp.ndarray, legal_action_mask: jnp.ndarray) -> tuple[jnp.ndarray, ...]:
+def _single_state_to_graph(
+    board: jnp.ndarray, legal_action_mask: jnp.ndarray
+) -> tuple[jnp.ndarray, ...]:
     size = board.shape[0]
     n_nodes = size * size
     rows = jnp.repeat(jnp.arange(size, dtype=jnp.float32), size)
@@ -103,8 +107,12 @@ def _single_state_to_graph(board: jnp.ndarray, legal_action_mask: jnp.ndarray) -
         axis=-1,
     )
 
-    current_senders, current_receivers, current_edges = _current_player_edge_features(board, legal_action_mask)
-    opponent_senders, opponent_receivers, opponent_edges = _opponent_edge_features(board)
+    current_senders, current_receivers, current_edges = _current_player_edge_features(
+        board, legal_action_mask
+    )
+    opponent_senders, opponent_receivers, opponent_edges = _opponent_edge_features(
+        board
+    )
     senders = jnp.concatenate([current_senders, opponent_senders], axis=0)
     receivers = jnp.concatenate([current_receivers, opponent_receivers], axis=0)
     edges = jnp.concatenate([current_edges, opponent_edges], axis=0)
@@ -113,11 +121,15 @@ def _single_state_to_graph(board: jnp.ndarray, legal_action_mask: jnp.ndarray) -
 
 
 @jax.jit
-def state_to_graph(board: jnp.ndarray, legal_action_mask: jnp.ndarray) -> BreakthroughGraphsTuple:
+def state_to_graph(
+    board: jnp.ndarray, legal_action_mask: jnp.ndarray
+) -> BreakthroughGraphsTuple:
     if board.ndim == 2:
         board = board[jnp.newaxis, ...]
         legal_action_mask = legal_action_mask[jnp.newaxis, ...]
-    nodes, edges, senders, receivers, action_edge_indices = jax.vmap(_single_state_to_graph)(board, legal_action_mask)
+    nodes, edges, senders, receivers, action_edge_indices = jax.vmap(
+        _single_state_to_graph
+    )(board, legal_action_mask)
     batch_size, n_nodes, node_dim = nodes.shape
     _, n_edges, edge_dim = edges.shape
     node_offsets = (jnp.arange(batch_size, dtype=jnp.int32) * n_nodes)[:, None]

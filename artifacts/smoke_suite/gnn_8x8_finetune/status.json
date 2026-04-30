@@ -1,0 +1,15 @@
+{
+  "experiment_name": "gnn_8x8_finetune",
+  "run_name": "gnn_8x8_finetune",
+  "board_size": 8,
+  "model_type": "gnn",
+  "target_iterations": 2,
+  "completed_iterations": 2,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
+  "interrupt_signal": null,
+  "latest_checkpoint": "artifacts/smoke_suite/gnn_8x8_finetune/checkpoints/final.pkl",
+  "final_checkpoint": "artifacts/smoke_suite/gnn_8x8_finetune/checkpoints/final.pkl",
+  "resume_state": "artifacts/smoke_suite/gnn_8x8_finetune/latest_resume.pkl"
+}

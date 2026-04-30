@@ -9,6 +9,7 @@
 \usepackage{url}
 \usepackage{geometry}
 \usepackage{enumitem}
+\usepackage{float}
 \usepackage[T1]{fontenc}
 \usepackage{caption}
 \graphicspath{{report/figures/}{figures/}}
@@ -34,15 +35,11 @@
 
 \begin{abstract}
 
-We study whether a board-size-invariant graph encoder improves self-play learning and cross-board transfer in the game Breakthrough.
-Using an AlphaZero-style training loop,
-we compare a graph neural network (GNN) with a convolutional neural network (CNN) baseline on 8$\times$8 play
-and evaluate transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning.
-The CNN converges to 100\% greedy-evaluation win rate within 40 iterations while the GNN
-plateaus at 42\% with high variance throughout training.
-Pretraining on 5$\times$5 provides a strong early transfer benefit, improving iteration-5 win rate on 8$\times$8 from 17\% to 67\%,
-but does not eliminate the CNN's long-run advantage.
-In a direct 12-game match, the CNN defeats the GNN 10 games to 2.
+We study whether a board-size-invariant graph encoder improves self-play learning and cross-board transfer in Breakthrough.
+Using an AlphaZero-style training loop, we compare a graph neural network (GNN) with a convolutional neural network (CNN) on 8$\times$8 play and in 5$\times$5$\rightarrow$8$\times$8 transfer.
+Under our training budget, the CNN reaches a 100\% greedy-evaluation win rate by iteration 40, while the GNN plateaus near 42\%.
+Pretraining on 5$\times$5 improves early 8$\times$8 performance from 17\% to 67\% at iteration 5, but does not remove the CNN's long-run advantage.
+In a direct 12-game match, the CNN defeats the best GNN 7 games to 5.
 \end{abstract}
 
 \section{Introduction}
@@ -52,21 +49,17 @@ Breakthrough is a two-player abstract strategy game played on an $8\times8$ boar
 Despite its simple rules, the game is strategically rich and has a large state space of approximately $1.5\times 10^{16}$ \cite{jonsson2025solving}.
 Figure~\ref{fig:rules} illustrates the starting position and the legal forward and diagonal-capture moves that define the game.
 
-Breakthrough is a useful testbed for studying learned representations in reinforcement learning.
-Its rules are simple, but successful play depends heavily on local geometry: pieces move only forward, captures are diagonal, and reaching the opponent's back rank ends the game.
-This structure makes the game a natural candidate for graph-based representations, in which squares are nodes and legal relations are edges rather than purely image-like grid encodings.
-It is especially attractive for transfer experiments because the same local move rules apply across board sizes.
+Breakthrough is a useful testbed for representation learning because strong play depends on local,
+directional structure and the same move rules apply across board sizes.
+We study whether an AlphaGateau-style graph neural network (GNN) can outperform a simpler
+convolutional neural network (CNN) on 8$\times$8 Breakthrough, and whether its
+board-size-invariant representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer
+meaningful. Under our training budget, the CNN is stronger from scratch, while 5$\times$5
+pretraining gives the GNN a clear early transfer benefit without closing the full gap.
 
-Our project studies two questions.
-First, under a fixed self-play training budget, does an AlphaGateau-style graph neural network (GNN) outperform a simpler convolutional neural network (CNN) baseline on 8$\times$8 Breakthrough?
-Second, does the GNN's board-size-invariant representation make transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning meaningful?
-To answer these questions, we built a JAX-based self-play training and evaluation pipeline for Breakthrough and compared graph and convolutional agents under matched settings.
-Our main findings are that the CNN baseline outperforms the GNN from scratch on 8$\times$8, while 5$\times$5 pretraining gives the GNN a clear early advantage during transfer without closing the full gap to the
-CNN.
-
-\begin{figure}[t]
+\begin{figure}[H]
   \centering
-  \includegraphics[width=0.92\linewidth]{breakthrough_rules.png}
+  \includegraphics[width=0.85\linewidth]{breakthrough_rules.png}
   \caption{Breakthrough rules overview. \emph{Left}: the standard starting position on an 8$\times$8 board. \emph{Right}: example legal moves for White. A pawn may move one square straight forward into an empty square, or one square diagonally forward only when capturing an opposing pawn.}
   \label{fig:rules}
 \end{figure}
@@ -77,44 +70,40 @@ AlphaZero-style agents combine self-play reinforcement learning with Monte Carlo
 (MCTS)~\cite{alphazero}.
 A neural network predicts a policy over actions and a scalar value estimate; MCTS then refines
 action selection during play, and the search distribution becomes a policy target for training.
-We use Gumbel MCTS\footnote{using the \texttt{mctx} library}, which selects actions by
+We use Gumbel MCTS,\footnote{using the \texttt{mctx} library} which selects actions by
 differentiably perturbing the policy logits with Gumbel noise~\cite{muzero}.
 
 AlphaGateau~\cite{alphagateau} replaces the convolutional encoder in AlphaZero with a graph
 neural network, aiming to better represent the relational structure of board games.
 It uses graph attention~\cite{gat} with residual message passing layers.
 
-Prior work on Breakthrough has focused primarily on exact game solving rather than self-play learning.
-Early work combined race patterns with job-level proof-number search to solve the 6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}.
-More recently, the 6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
-race patterns, proof-number-based search, and a neural-network-guided job scheduler~\cite{jonsson2025solving}.
-These results show that, despite simple rules, Breakthrough is strategically rich enough to support substantial search and solving research.
-
-Those exact-solving systems aim to prove the game-theoretic value of positions.
-Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study whether learned policy/value models can play effectively under self-play.
-In particular, we care about representation quality and cross-board transfer rather than formal game-theory optimality.
-
-Breakthrough~\cite{breakthrough} is especially attractive for this representation question because the same local move rules apply on both 5$\times$5 and 8$\times$8 boards.
-A fixed-size CNN processes an 8$\times$8 grid directly but does not naturally reuse the same architecture across board sizes.
-By contrast, a graph encoder can preserve the same feature schema while changing only the number of nodes and edges.
-This makes Breakthrough a clean testbed for our two questions: whether a GNN is competitive with a CNN under the same RL budget, and whether a board-size-invariant graph representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful.
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play
+learning~\cite{saffidine2011breakthrough,jonsson2025solving}. We defer those details to
+Appendix~\ref{app:background} because our focus is representation learning and transfer rather
+than solving methodology.
+Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study
+whether learned policy/value models can play effectively under self-play and transfer across board
+sizes.
 
 
 
 \section{Methodology}
 
 \paragraph{Environment and action encoding.}
-We implemented a custom Breakthrough envronment in JAX.
+We implemented a custom Breakthrough environment in JAX.
 States include the board array, an observation tensor, a legal-action mask, the side to move, rewards, and terminal game state.
 Actions use a fixed encoding $\texttt{action} = \texttt{from\_square} \times 3 + \texttt{move\_type}$,
 where \texttt{move\_type} $\in$ \{\texttt{forward}, \texttt{diag\_left}, \texttt{diag\_right}\}.
 We canonicalize the board so the player to move always advances upward, keeping both the tensor
 and graph interfaces board-size agnostic.
+By canonicalizing the perspective, the GNN's filters don't need to care about the absolute coordinates or the total size of the board.
+They only need to learn the local rule.
 
 \paragraph{Model representations.}
 The CNN baseline uses a three-channel tensor (self pieces, opponent pieces, empty squares) fed
 into a residual convolutional network.
-The GNN constructs a graph with one node per square and directed move edges for both players.\footnote{This is in line with the AlphaGateau paper.}
+The GNN constructs a graph with one node per square and directed move edges for both players; see
+Appendix Figure~\ref{fig:encoding} for a visual example of the canonical encoding.\footnote{This is in line with the AlphaGateau paper.}
 Node features encode occupancy, normalized coordinates, and edge-of-board indicators; edge features
 encode move direction, owner, legality, capture structure, and goal-rank information.
 This graph construction preserves the same local feature schema across board sizes, which is the
@@ -128,38 +117,31 @@ Self-play training uses 32 MCTS simulations per move, a 50k-sample replay buffer
 Unless otherwise noted, the learning rate is $10^{-3}$.
 
 \paragraph{Experiment configurations.}
-We ran four groups of experiments.
+We ran three main experiment groups.
 First, in the 8$\times$8 scratch comparison, the CNN and GNN were trained from scratch for
-40 iterations\footnote{We used 40 iterations as the standard training budget for the main experiments because due to our single-GPU compute budget.}
-with 64 self-play games per iteration and a 192-ply move cap.
+40 iterations with 64 self-play games per iteration and a 192-ply move cap.
+We used 40 iterations as the standard budget because of our single-GPU compute constraints.
 Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterations using
-128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.
-\footnote{Thirty iterations were used for fine-tuning to measure whether transfer learning improves early 8$\times$8 learning faster than from strach implementation. The goal was not to over optimize the finetuned model.}
-Third, we repeated selected GNN runs with cosine decay in place of a fixed learning rate to study
-whether a learning-rate schedule improved optimization.
-Fourth, we trained a TD($\lambda$) baseline using a value-only CNN with no policy head or MCTS.
-For TD($\lambda$), we use $\lambda = 0.7$ and $\epsilon$-greedy self-play; the 5$\times$5 run
-uses 128 episodes per iteration and a 96-ply move cap, while the 8$\times$8 run uses 64 episodes
-per iteration and a 256-ply move cap, with both running for 40 iterations at learning rate
-$10^{-3}$.
-We also explored an extended transfer pipeline of 5$\times$5 to 6$\times$6 to 8$\times$8 as an
-additional experiment aimed at bridging the gap between board sizes.
+128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{We used 30 fine-tuning iterations to measure early 8$\times$8 transfer gains rather than fully optimize the transferred model.}
+Third, we repeated selected GNN runs with cosine decay and explored a progressive
+5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 transfer ablation. We also
+evaluated a value-only TD($\lambda$) baseline, deferred to Appendix~\ref{app:tdlambda}.
 
 \paragraph{Evaluation protocol.}
 Every five iterations we play 12 games against a greedy evaluator and record the win rate.
 For the policy-based agents, the greedy evaluator always picks the highest-policy action.
 After training, we run a 12-game head-to-head match between the final GNN and CNN scratch
 checkpoints.
-We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
-fine-tuning.
-Since our TD baseline has no policy head, it is evaluated using greedy value-based play, selecting
-the action whose successor state has the highest predicted value rather than using MCTS.
+For the progressive transfer experiment, we evaluate each stage only on its current board size; we
+do not re-evaluate the final 8$\times$8 checkpoint on earlier boards, so these results reflect
+stagewise transfer rather than catastrophic forgetting.
+Because of compute constraints, this evaluation sample size is small. Consequently, exact win rate percentages and specific peaks are subject to high
+variance and should be interpreted as general performance trends rather than highly precise measurements.
+
 \section{Results}
 
-Table~\ref{tab:results} summarises all four completed experiments.
-The scratch comparison and transfer results are visualised in
-Figures~\ref{fig:scratch} and~\ref{fig:transfer} respectively, and
-Figure~\ref{fig:encoding} illustrates the graph encoding.
+Table~\ref{tab:results} summarises the main training runs, Table~\ref{tab:head_to_head} reports
+the direct 12-game matches, and Figure~\ref{fig:scratch} shows the 8$\times$8 scratch comparison.
 
 \begin{table}[t]
 \centering
@@ -168,34 +150,46 @@ Figure~\ref{fig:encoding} illustrates the graph encoding.
 \toprule
 Run & Iters & Peak win rate & Final win rate \\
 \midrule
-TD($\lambda$) 5$\times$5 scratch        & 40 & 1.00 @ iter 10 & 0.83 @ iter 40 \\
-TD($\lambda$) 8$\times$8 scratch        & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 \\
 GNN 8$\times$8 scratch                  & 40 & 0.67 @ iter 20 & 0.42 @ iter 40 \\
 CNN 8$\times$8 scratch                  & 40 & 1.00 @ iter 40 & 1.00 @ iter 40 \\
 GNN 5$\times$5 pretrain                 & 40 & 1.00 @ iter 20 & 1.00 @ iter 40 \\
 GNN 8$\times$8 fine-tune                & 30 & 0.75 @ iter 15 & 0.67 @ iter 30 \\
-GNN 5$\times$5 pretrain (cosine decay)  & 40 & 1.00 @ iter 10 & 0.83 @ iter 40 \\
-GNN 8$\times$8 scratch (cosine decay)   & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 (still improving) \\
+GNN 5$\times$5 pretrain (cosine decay)  & 40 & 1.00 @ iter 20 & 0.83 @ iter 40 \\
+GNN 8$\times$8 scratch (cosine decay)   & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 \\
 GNN 8$\times$8 fine-tune (cosine decay) & 30 & 0.83 @ iter 15 & 0.83 @ iter 30 \\
+GNN 6$\times$6 fine-tune (cosine, progressive) & 30 & 1.00 @ iter 20 & 0.92 @ iter 30 \\
+GNN 8$\times$8 fine-tune (cosine, progressive) & 30 & 0.92 @ iter 5 & 0.58 @ iter 30 \\
 \bottomrule
 \end{tabular}
-\caption{Win rates are measured against the greedy evaluator over 12 games. All four experiments
-ran to completion.}
+\caption{Win rates against the greedy evaluator over 12 games. Cosine and progressive-transfer runs
+are included because they change the transfer outcome.}
 \label{tab:results}
 \end{table}
 
-\paragraph{Scratch comparison.}
-The CNN and GNN both start near zero win rate but diverge sharply from iteration 15 onward.
-The CNN climbs monotonically, reaching 0.58 at iteration 15, 0.92 at iteration 25, and 1.00 at
-iteration 40.
-The GNN peaks at 0.67 at iteration 20, then oscillates between 0.25 and 0.58 for the rest of
-training, ending at 0.42.
-The policy loss curves confirm this: the CNN's policy loss descends steadily to 1.97 by iteration
-40, while the GNN's policy loss plateaus at approximately 2.05 from iteration 36 onward, indicating
-convergence to a suboptimal policy.
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+Final GNN variant & Wins & Losses & Win rate \\
+\midrule
+Scratch GNN                         & 2 & 10 & 0.17 \\
+Scratch GNN (cosine decay)          & 1 & 11 & 0.08 \\
+Direct 5$\times$5$\rightarrow$8$\times$8 transfer (cosine) & 4 & 8 & 0.33 \\
+Progressive 5$\times$5$\rightarrow$6$\times$6$\rightarrow$8$\times$8 transfer (cosine) & 5 & 7 & 0.42 \\
+\bottomrule
+\end{tabular}
+\caption{Direct 12-game matches against the final CNN 8$\times$8 scratch checkpoint. Despite the
+small sample, they show how much each GNN variant narrows the final gap.}
+\label{tab:head_to_head}
+\end{table}
 
-The head-to-head match between final checkpoints confirms the scratch training advantage: the CNN
-wins 10 of 12 games (83\%), with the GNN winning only 2 (17\%).
+\paragraph{Scratch comparison.}
+The CNN and GNN diverge sharply after iteration 15. By iteration 40, the CNN reaches 1.00
+greedy-evaluation win rate while the scratch GNN finishes at 0.42 (Table~\ref{tab:results}),
+and the CNN wins the final head-to-head 10 games to 2 (Table~\ref{tab:head_to_head}). Figure
+~\ref{fig:scratch} shows the same pattern: the CNN improves steadily while the GNN peaks earlier
+and plateaus.
 
 \paragraph{Transfer learning.}
 The 5$\times$5 pretrained GNN converges cleanly, reaching 1.00 win rate by iteration 20 and
@@ -203,26 +197,21 @@ maintaining it through iteration 40.
 Applied zero-shot to the 8$\times$8 board, it achieves only 17\% win rate (2/12 games), showing
 that the 5$\times$5 policy does not transfer directly to the larger board.
 
-Fine-tuning from the 5$\times$5 checkpoint, however, gives a substantial early-stage advantage
-(Figure~\ref{fig:transfer}, right panel).
-At iteration 5, the fine-tuned model wins 67\% of games versus a greedy evaluator, compared to
-only 17\% for the GNN trained from scratch at the same iteration---a 4$\times$ improvement.
-This demonstrates that the board-size-invariant GNN representation does enable meaningful
-cross-board knowledge transfer.
-By iteration 30, the fine-tuned model reaches 67\% while the scratch GNN at the same iteration
-is at 58\%, a persistent but modest advantage.
-Neither GNN variant approaches the CNN's 75\% win rate at iteration 30.
-
-\paragraph{TD($\lambda$) baseline.}
-TD($\lambda$) really struggles against the greedy evaluator: it is never able to win a game at any iteration of training and on either board size. On the 5$\times$5 board, we see a short spike at iteration 2 caused by the network outputting its first non-zero values. The loss then decreases from 0.186 at iter 3 to 0.100 at iter 8. After that, loss slowly deteriorates to 0.146 at iter 40, with the number of transitions decreasing suggesting the model is converging to a fast-losing policy. On the 8$\times$8 board, we see a similar spike at iter 2, but the loss never improves from there. This indicates the model does not learn any meaningful information or favor any winning moves.
-
-\paragraph{Cosine decay LR.}
-The cosine decay learning rate scheduler allows the GNN to reach 100\% win rate twice as fast as the fixed LR on the 5$\times$5 board. However, we see that the learning rate drops by the final iteration to 83\%. We attribute this to evaluation variance: the evaluator "got lucky". Neither the policy nor value losses showed any degradation corresponding to the win rate drop.
-On the 8$\times$8 board, we note that we obtain a lower peak win rate than fixed LR, but a higher final win rate. We also find that while the loss plateaued for the fixed LR, it continues to steadily decrease with cosine decay. This alongside the noisy win rates indicates that the model has not yet converged. We posit that with more iterations, this model would overcome the fixed LR's peak win rate.
-The 5$\times$5 to 8$\times$8 transfer learning pipeline also shows clear improvement: the win rate jumps from 0.75 and 0.67 (peak and final) for fixed LR to 0.83 (both) for cosine decay. The win rate is also much less noisy for cosine decay, and consistently improves: 75\% at iters 5 and 10, 83\% at iters 15, 20, 25, 30.
-
-\paragraph{Extended Transfer Learning Pipeline.}
-%TODO: fill in here. Does the 6x6 improve the transfer benefits?
+Fine-tuning from the 5$\times$5 checkpoint gives a substantial early-stage advantage. At iteration
+5, the GNN pretrained on 5$\times$5 and then fine-tuned directly on 8$\times$8 with cosine decay
+wins 75\% of games versus a greedy evaluator, compared to 17\% for the fixed-LR GNN trained from
+scratch at the same iteration.\footnote{more than a 4$\times$ improvement} This shows meaningful
+cross-board transfer.
+By iteration 30, this direct 5$\times$5~$\rightarrow$~8$\times$8 fine-tuning run reaches 83\%,
+while the fixed-LR scratch GNN at the same iteration is at 58\%, a persistent advantage.
+This is the strongest transfer run in Table~\ref{tab:results} by final greedy-evaluator win rate,
+so we use it as the main transfer result.
+The final transfer checkpoint still trails the final CNN checkpoint overall, but in direct
+final-checkpoint play it narrows the gap from 2 wins in 12 games for the scratch GNN to 4 wins in
+12 games against the same CNN (Table~\ref{tab:head_to_head}). A progressive
+5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline does not improve the final
+8$\times$8 greedy-evaluator result, so we treat it as a secondary ablation and defer its full
+curves to Appendix~\ref{app:additional_curves}.
 
 \begin{figure}[t]
   \centering
@@ -234,15 +223,115 @@ The 5$\times$5 to 8$\times$8 transfer learning pipeline also shows clear improve
   \label{fig:scratch}
 \end{figure}
 
+\section{Discussion}
+
+%\paragraph{Systems outcome.}
+%The project delivers a complete, reproducible AlphaZero-style Breakthrough stack: custom JAX
+%environment, graph and convolutional models, resumable self-play training, automated report-asset
+%generation, and Slurm-native wrappers for the course cluster.
+%The graph encoder is genuinely board-size invariant, and the pipeline demonstrates the
+%5$\times$5~$\rightarrow$~8$\times$8 transfer question end-to-end.
+
+\paragraph{Why the CNN outperforms the GNN.}
+The CNN's advantage on 8$\times$8 Breakthrough is a meaningful negative result. On a regular grid,
+convolutions share weights across spatial positions and efficiently capture the local, directional
+patterns that dominate Breakthrough tactics. The GNN adds extra optimization burden through
+attention pooling and edge-feature processing, which appears harder to train under the fixed
+40-iteration budget. Figure~\ref{fig:scratch} is consistent with this interpretation.
+
+\paragraph{Transfer benefit and limits.}
+Transfer from 5$\times$5 pretraining produces a real, quantifiable early-training benefit:
+the fine-tuned model starts 4$\times$ higher than the scratch GNN at iteration 5.
+This confirms our second hypothesis: the GNN's board-size-invariant representation supports
+meaningful knowledge transfer.
+However, the benefit is largest early in fine-tuning and shrinks as both models train longer,
+suggesting that pretraining provides a stronger initialisation rather than a compounding structural
+advantage. Using cosine decay improves the final transferred checkpoint to 0.83 and reduces the
+late-stage drop seen with a fixed learning rate.
+
+\section{Conclusion and Future Work}
+
+We adapted AlphaGateau to Breakthrough and found that, under the current 40-iteration budget, the
+CNN remains the strongest model on 8$\times$8 from scratch. GNN transfer from
+5$\times$5 meaningfully improves early 8$\times$8 learning and narrows the final head-to-head gap
+to the CNN. Our main transfer result is the GNN pretrained on 5$\times$5 and then fine-tuned
+directly on 8$\times$8 with cosine decay, because it achieves the best final greedy-evaluator
+score among the transfer runs. The most useful next steps are to extend the fine-tuning budget,
+increase the evaluation game count, and run GNN ablations that simplify attention pooling or edge
+features.
+
+
+\section{Contributions and Acknowledgements}
+\textbf{Contributions.}
+\textit{Athmane Benarous} focused on the JAX environment, training pipeline, Slurm orchestration, code
+pipeline setup, CNN model training, report drafting, and head-to-head comparisons.
+\textit{Farooq Khan} focused on the transfer-learning baseline, head-to-head comparisons, presentation
+slides, video recording, background research, and report writing.
+\textit{Andrew Saffar} focused on transfer learning, the TD($\lambda$) baseline, presentation slides,
+video recording, figure creation, and report drafting.
+
+\textbf{Acknowledgements.}
+We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
+Optax, Jraph, MCTX, and the McGill department GPU infrastructure on \texttt{mimi.cs.mcgill.ca}.
+
+\newpage
+\bibliographystyle{plain} % Defines the style
+\bibliography{references}  % Points to references.bib
+
+\newpage
+\appendix
+\section{Additional Background}
+\label{app:background}
+
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play
+learning. Early work combined race patterns with job-level proof-number search to solve the
+6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}. More recently, the
+6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
+race patterns, proof-number-based search, and a neural-network-guided job scheduler
+~\cite{jonsson2025solving}. These results show that, despite simple rules, Breakthrough is
+strategically rich enough to support substantial search and solving research.
+
+\section{TD($\lambda$) Baseline}
+\label{app:tdlambda}
+
+For TD($\lambda$), we use $\lambda = 0.7$ and $\epsilon$-greedy self-play; the 5$\times$5 run uses 128 episodes per iteration and a 96-ply move cap, while the 8$\times$8 run uses 64 episodes per iteration and a 256-ply move cap, with both running for 40 iterations at learning rate $10^{-3}$.
+\paragraph{Evaluation protocol.}
+Since the TD baseline has no policy head, it is evaluated using greedy value-based play, selecting
+the action whose successor state has the highest predicted value rather than using MCTS.
+\paragraph{TD($\lambda$) baseline Results.}
+TD($\lambda$) remains much weaker than the MCTS-based agents against the greedy evaluator. On the
+5$\times$5 board it reaches a peak win rate of 1.00 at iteration 10 before falling back to 0.83
+by iteration 40, and on the 8$\times$8 board it only reaches 0.58 by iteration 40. This profile
+is consistent with a value learner that can exploit some short-horizon patterns on the smaller
+board but does not produce a policy strong enough to compete reliably on the full game.
+
+\paragraph{TD($\lambda$) baseline Discussion.}
+Even when TD($\lambda$) wins some evaluation games, it still trails the search-based models by a
+wide margin. We attribute this to the evaluator's explicit lookahead: TD($\lambda$) must encode
+that lookahead implicitly in its value function, while the AlphaZero-style agents obtain it
+directly through MCTS. Under the current compute budget, the results therefore support the need
+for search-guided policy learning rather than value-only self-play.
+
+\section{Additional Training Curves}
+\label{app:additional_curves}
+
+\paragraph{Progressive transfer curves.}
+Figure~\ref{fig:progressive_transfer} shows the full
+5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline. Transfer to the
+intermediate 6$\times$6 task is strong, but the benefit does not carry cleanly to the final
+8$\times$8 stage, which finishes below the GNN pretrained on 5$\times$5 and then fine-tuned
+directly on 8$\times$8 with cosine decay. Because we do not re-evaluate the final checkpoint on
+earlier board sizes, this figure should be read as stagewise transfer evidence rather than a
+direct measurement of catastrophic forgetting.
+
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{transfer_curve.png}
-  \caption{Transfer learning. \emph{Left}: the 5$\times$5 pretrained GNN converges cleanly to
-  1.00 win rate. \emph{Right}: zero-shot transfer to 8$\times$8 achieves only 17\% (black dot);
-  fine-tuning (blue) reaches 67\% at iteration 5---a 4$\times$ improvement over the GNN scratch
-  baseline (green dashed). The fine-tuned model retains a modest advantage over scratch throughout
-  training.}
-  \label{fig:transfer}
+  \includegraphics[width=\linewidth]{gnn_5x5_6x6_8x8_progressive_winrate.png}
+  \caption{Progressive transfer pipeline across board sizes. Vertical dashed lines mark stage
+  boundaries and shaded bands indicate the active board size. The model adapts well to 6$\times$6
+  but does not retain that advantage through the final 8$\times$8 fine-tuning stage. Each
+  win-rate point is measured over 12 greedy-evaluation games.}
+  \label{fig:progressive_transfer}
 \end{figure}
 
 \begin{figure}[t]
@@ -253,85 +342,5 @@ The 5$\times$5 to 8$\times$8 transfer learning pipeline also shows clear improve
   captures.}
   \label{fig:encoding}
 \end{figure}
-
-\section{Discussion}
-
-\paragraph{Systems outcome.}
-The project delivers a complete, reproducible AlphaZero-style Breakthrough stack: custom JAX
-environment, graph and convolutional models, resumable self-play training, automated report-asset
-generation, and Slurm-native wrappers for the course cluster.
-The graph encoder is genuinely board-size invariant, and the pipeline demonstrates the
-5$\times$5~$\rightarrow$~8$\times$8 transfer question end-to-end.
-
-\paragraph{Why the CNN outperforms the GNN.}
-The CNN's advantage on 8$\times$8 Breakthrough is a meaningful negative result.
-One likely explanation is inductive bias: on a regular grid, convolutions share weights across
-all spatial positions and efficiently capture the local, directional patterns that dominate
-Breakthrough tactics.
-The GNN introduces additional parameters through attention pooling and edge feature MLPs, making
-it harder to optimize under a fixed 40-iteration budget with a single learning rate.
-The GNN policy loss plateau at $\approx$2.05 suggests the model converged to a saddle point or
-local minimum.
-We hypothesize that larger iteration budget, layer-wise or decaying learning rates, or a simplified GNN variant
-without attention pooling might close this gap. The cosine decay experiments confirm this assumption: the GNN's policy loss is still decreasing at iteration 40, avoiding the plateau, and the final win rate improves.
-
-\paragraph{Transfer benefit and limits.}
-Transfer from 5$\times$5 pretraining produces a real, quantifiable early-training benefit:
-the fine-tuned model starts 4$\times$ higher than the scratch GNN at iteration 5.
-This confirms our second hypothesis: the GNN's board-size-invariant representation supports
-meaningful knowledge transfer.
-However, the benefit is largest early in fine-tuning and shrinks as both models train longer.
-This suggests the pretrained features provide a good initialisation rather than a structural
-advantage that compounds.
-An interesting follow-up is whether increasing the fine-tuning budget beyond 30 iterations would
-allow the fine-tuned GNN to match or surpass the CNN.
-
-\paragraph{Evaluation noise.}
-Each win-rate data point comes from 12 games, giving a standard deviation of approximately
-$\sqrt{p(1-p)/12} \approx 0.14$ for $p \approx 0.5$.
-The oscillations in the GNN win-rate curve---most visible between iterations 20 and 40---are
-consistent with this level of noise around a slowly moving mean.
-A larger evaluation budget (e.g., 50--100 games per checkpoint) would substantially reduce this
-variance in future runs.
-
-\paragraph{TD($\lambda$) baseline.}
-TD($\lambda$) was never able to beat its evaluator. We attribute this to the evaluator being too strong: it is given an explicit lookahead that TD is not able to rival within 40 iterations. The other models make use of MCTS which provides a one-step lookahead, but TD's value function is not strong enough to approximate that in the same number of iterations. This demonstrates the need for the AlphaZero approach.
-
-\paragraph{Learning Rate Schedule.}
-We have demonstrated that implementing a cosine decay learning rate scheduler significantly improves performance on GNN models. We speed up the learning, avoid plateaus, and reduce win rate variability. %TODO: rephrase variability?
-
-\paragraph{Extended Transfer Learning pipeline.}
-%TODO: fill in here.
-
-\section{Conclusion and Future Work}
-
-We successfully adapted AlphaGateau to Breakthrough, built a complete reproducible pipeline, and
-ran all four planned experiments to completion.
-The main empirical findings are: (1) the CNN baseline outperforms the GNN from scratch under the
-current 40-iteration budget, with the GNN's policy loss plateauing at a higher value; (2)
-transfer from 5$\times$5 pretraining meaningfully accelerates early 8$\times$8 learning but does
-not fully compensate for the GNN's convergence disadvantage versus the CNN; (3) the TD learning fails to rival a greedy evaluator, demonstrating the need for MCTS lookahead; and (4) cosine LR scheduling considerably improves speed and performance.
-
-Promising future directions include: running a longer fine-tuning budget (60--80 iterations) to
-test whether the fine-tuned GNN can eventually match the CNN; running ablations that disable attention pooling or simplify edge features; increasing the evaluation game count to reduce win-rate noise; and repeating with the updated 256-ply cap
-to eliminate any truncation artefacts from the current 192-ply limit.
-
-\section{Contributions and Acknowledgements}
-
-\textbf{Contributions.}
-Athmane Benarous focused on the JAX environment, training pipeline, Slurm orchestration, and
-report integration.
-Farooq Khan focused on the CNN baseline experiments, result analysis, and presentation assets.
-Andrew Saffar focused on the TD implementation, learning rate decay, extended transfer learning pipeline, and write-up support.
-Farooq Khan focused on the CNN baseline experiments, result analysis, report, and presentation.
-Andrew Saffar focused on the graph encoding, evaluation tooling, and write-up support.
-
-\textbf{Acknowledgements.}
-We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
-Optax, Jraph, MCTX, and the McGill department GPU infrastructure on \texttt{mimi.cs.mcgill.ca}.
-
-\bibliographystyle{plain} % Defines the style
-\bibliography{references}  % Points to references.bib
-
 
 \end{document}

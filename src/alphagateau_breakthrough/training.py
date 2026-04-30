@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pickle
 import signal
 from dataclasses import replace
@@ -11,10 +9,16 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from rich.progress import BarColumn, MofNCompleteColumn, Progress, TaskProgressColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TaskProgressColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from .configs import TrainConfig
-from .elo import compute_wls_elo
 from .env import BreakthroughEnv
 from .evaluation import evaluate_against_greedy
 from .mcts import SelfPlayBatch, selfplay
@@ -65,7 +69,9 @@ class ReplayBuffer:
         return tuple(np.asarray(field) for field in self.data)
 
     @classmethod
-    def from_payload(cls, capacity: int, payload: tuple[np.ndarray, ...] | None) -> ReplayBuffer:
+    def from_payload(
+        cls, capacity: int, payload: tuple[np.ndarray, ...] | None
+    ) -> ReplayBuffer:
         replay = cls(capacity)
         if payload is not None:
             replay.data = SampleBatch(*(np.asarray(field) for field in payload))
@@ -97,7 +103,10 @@ class SignalCheckpointState:
                 self.signal_name = signal.Signals(signum).name
             except ValueError:
                 self.signal_name = str(signum)
-        print(f"Received {self.signal_name}; checkpointing after the current safe point.", flush=True)
+        print(
+            f"Received {self.signal_name}; checkpointing after the current safe point.",
+            flush=True,
+        )
 
 
 def selfplay_to_samples(data: SelfPlayBatch) -> SampleBatch:
@@ -112,7 +121,9 @@ def selfplay_to_samples(data: SelfPlayBatch) -> SampleBatch:
     board = np.array(data.board).reshape((-1,) + data.board.shape[2:])
     obs = np.array(data.obs).reshape((-1,) + data.obs.shape[2:])
     lam = np.array(data.lam).reshape((-1,) + data.lam.shape[2:])
-    policy_tgt = np.array(data.action_weights).reshape((-1,) + data.action_weights.shape[2:])
+    policy_tgt = np.array(data.action_weights).reshape(
+        (-1,) + data.action_weights.shape[2:]
+    )
     value_tgt = value_tgt.reshape(-1)
     mask = value_mask.reshape(-1)
     return SampleBatch(
@@ -138,13 +149,19 @@ def make_train_step(model: ModelManager, optimizer: optax.GradientTransformation
             params={"params": params, "batch_stats": batch_stats},
             training=True,
         )
-        policy_loss = optax.softmax_cross_entropy(logits, jnp.asarray(batch.policy_tgt)).mean()
-        value_loss = (optax.l2_loss(value, jnp.asarray(batch.value_tgt)) * jnp.asarray(batch.mask)).mean()
+        policy_loss = optax.softmax_cross_entropy(
+            logits, jnp.asarray(batch.policy_tgt)
+        ).mean()
+        value_loss = (
+            optax.l2_loss(value, jnp.asarray(batch.value_tgt)) * jnp.asarray(batch.mask)
+        ).mean()
         return policy_loss + value_loss, (new_batch_stats, policy_loss, value_loss)
 
     @jax.jit
     def train_step(params, batch_stats, opt_state, batch):
-        grads, (new_batch_stats, policy_loss, value_loss) = jax.grad(loss_fn, has_aux=True)(params, batch_stats, batch)
+        grads, (new_batch_stats, policy_loss, value_loss) = jax.grad(
+            loss_fn, has_aux=True
+        )(params, batch_stats, batch)
         updates, opt_state = optimizer.update(grads, opt_state, params)
         params = optax.apply_updates(params, updates)
         return params, new_batch_stats, opt_state, policy_loss, value_loss
@@ -152,7 +169,9 @@ def make_train_step(model: ModelManager, optimizer: optax.GradientTransformation
     return train_step
 
 
-def initialise_model(config: TrainConfig, run_name: str) -> tuple[ModelManager, chex.ArrayTree, chex.ArrayTree]:
+def initialise_model(
+    config: TrainConfig, run_name: str
+) -> tuple[ModelManager, chex.ArrayTree, chex.ArrayTree]:
     model = build_model_manager(
         model_id=run_name,
         model_type=config.model_type,
@@ -281,7 +300,9 @@ def _checkpoint_state(
             "model_type": config.model_type,
             "target_iterations": config.num_iterations,
             "completed_iterations": completed_iterations,
-            "remaining_iterations": max(0, config.num_iterations - completed_iterations),
+            "remaining_iterations": max(
+                0, config.num_iterations - completed_iterations
+            ),
             "status": status,
             "is_complete": status == "completed",
             "interrupt_signal": interrupt_signal,
@@ -317,7 +338,10 @@ def _validate_resume_config(config: TrainConfig, resume_payload: dict) -> None:
         "lr_warmup_steps",
     ]:
         if saved.get(key) != config.to_dict().get(key):
-            raise ValueError(f"Resume config mismatch for {key}: {saved.get(key)!r} != {config.to_dict().get(key)!r}")
+            raise ValueError(
+                f"Resume config mismatch for {key}: {saved.get(key)!r} != {config.to_dict().get(key)!r}"
+            )
+
 
 def build_optimizer(config: TrainConfig) -> optax.GradientTransformation:
     if config.lr_schedule == "cosine":
@@ -326,14 +350,14 @@ def build_optimizer(config: TrainConfig) -> optax.GradientTransformation:
         ) * config.training_passes
         schedule = optax.cosine_decay_schedule(
             init_value=config.learning_rate,
-            decay_steps = config.num_iterations * estimated_updates,
+            decay_steps=config.num_iterations * estimated_updates,
         )
     elif config.lr_schedule == "step":
         schedule = optax.piecewise_constant_schedule(
             init_value=config.learning_rate,
             boundaries_and_scales={
                 config.num_iterations // 2: config.lr_decay_factor,
-            }
+            },
         )
     else:
         schedule = config.learning_rate  # constant, existing behavior
@@ -350,6 +374,7 @@ def build_optimizer(config: TrainConfig) -> optax.GradientTransformation:
         )
 
     return optax.adam(schedule)
+
 
 def train_experiment(
     config: TrainConfig,
@@ -395,7 +420,9 @@ def train_experiment(
         params = resume_payload["params"]
         batch_stats = resume_payload["batch_stats"]
         opt_state = resume_payload["opt_state"]
-        replay = ReplayBuffer.from_payload(config.replay_window, resume_payload["replay_buffer"])
+        replay = ReplayBuffer.from_payload(
+            config.replay_window, resume_payload["replay_buffer"]
+        )
         rng = jnp.asarray(resume_payload["rng_key"])
         numpy_rng = np.random.default_rng()
         numpy_rng.bit_generator.state = resume_payload["numpy_rng_state"]
@@ -447,7 +474,11 @@ def train_experiment(
             MofNCompleteColumn(),
             TimeElapsedColumn(),
         ) as progress:
-            task = progress.add_task(f"Training {run_name}", total=config.num_iterations, completed=completed_iterations)
+            task = progress.add_task(
+                f"Training {run_name}",
+                total=config.num_iterations,
+                completed=completed_iterations,
+            )
             for iteration in range(completed_iterations + 1, config.num_iterations + 1):
                 rng, selfplay_key = jax.random.split(rng)
                 selfplay_data = selfplay(
@@ -460,12 +491,16 @@ def train_experiment(
                     n_sim=config.num_simulations,
                 )
                 replay.extend(selfplay_to_samples(selfplay_data))
-                num_updates = max(1, (len(replay) // config.batch_size) * config.training_passes)
+                num_updates = max(
+                    1, (len(replay) // config.batch_size) * config.training_passes
+                )
                 policy_losses = []
                 value_losses = []
                 for _ in range(num_updates):
                     batch = replay.sample(numpy_rng, config.batch_size)
-                    params, batch_stats, opt_state, policy_loss, value_loss = train_step(params, batch_stats, opt_state, batch)
+                    params, batch_stats, opt_state, policy_loss, value_loss = (
+                        train_step(params, batch_stats, opt_state, batch)
+                    )
                     policy_losses.append(float(policy_loss))
                     value_losses.append(float(value_loss))
 
@@ -477,7 +512,10 @@ def train_experiment(
                 }
                 metrics_rows.append(metrics_row)
 
-                if iteration % config.checkpoint_interval == 0 or iteration == config.num_iterations:
+                if (
+                    iteration % config.checkpoint_interval == 0
+                    or iteration == config.num_iterations
+                ):
                     checkpoint_path = checkpoints_dir / f"iter_{iteration:04d}.pkl"
                     save_checkpoint(
                         checkpoint_path,
@@ -488,7 +526,10 @@ def train_experiment(
                     )
                     latest_checkpoint = str(checkpoint_path)
 
-                if iteration % config.eval_interval == 0 or iteration == config.num_iterations:
+                if (
+                    iteration % config.eval_interval == 0
+                    or iteration == config.num_iterations
+                ):
                     eval_summary = evaluate_against_greedy(
                         env=env,
                         model=model,
@@ -513,7 +554,10 @@ def train_experiment(
                 progress.advance(task)
 
                 status = "running"
-                if signal_state.requested and completed_iterations < config.num_iterations:
+                if (
+                    signal_state.requested
+                    and completed_iterations < config.num_iterations
+                ):
                     interrupted = True
                     interrupt_signal = signal_state.signal_name
                     status = "interrupted"
@@ -532,7 +576,9 @@ def train_experiment(
                     eval_rows=eval_rows,
                     completed_iterations=completed_iterations,
                     latest_checkpoint=latest_checkpoint,
-                    final_checkpoint=str(final_checkpoint) if final_checkpoint.is_file() else None,
+                    final_checkpoint=str(final_checkpoint)
+                    if final_checkpoint.is_file()
+                    else None,
                     status=status,
                     interrupt_signal=interrupt_signal,
                 )
@@ -585,7 +631,7 @@ def build_config_from_preset(
     eval_games: int | None = None,
     lr_schedule: str | None = None,
     lr_decay_factor: float | None = None,
-    lr_warmup_steps: int | None = None
+    lr_warmup_steps: int | None = None,
 ) -> TrainConfig:
     config = preset
     if initial_checkpoint is not None:

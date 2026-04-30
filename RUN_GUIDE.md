@@ -74,32 +74,6 @@ python scripts/run_transfer_pipeline.py \
 
 Outputs land under `artifacts/experiments/<run_name>/`.
 
-### Step 5 — Postprocess and generate figures
-
-```bash
-python scripts/postprocess_experiments.py \
-  --gnn-scratch-dir  artifacts/experiments/gnn_8x8_scratch \
-  --cnn-scratch-dir  artifacts/experiments/cnn_8x8_scratch \
-  --pretrain-dir     artifacts/experiments/gnn_5x5_pretrain \
-  --finetune-dir     artifacts/experiments/gnn_8x8_finetune \
-  --transfer-summary artifacts/experiments/gnn_transfer_summary.json \
-  --transfer-zero-shot artifacts/experiments/gnn_transfer_zero_shot.json
-```
-
-Figures are written to `report/figures/`.
-
-### Step 6 — Compile the paper
-
-```bash
-# With tectonic (recommended, auto-downloads fonts):
-tectonic report/paper.tex
-
-# With pdflatex (requires a TeX distribution):
-pdflatex -output-directory=report report/paper.tex
-pdflatex -output-directory=report report/paper.tex  # second pass for refs
-```
-
----
 
 ## B. McGill Slurm (personal env)
 
@@ -125,13 +99,8 @@ Override the JAX CUDA version if your allocation uses CUDA 13:
 JAX_EXTRA='jax[cuda13]' bash scripts/setup_mimi_env.sh
 ```
 
-### Step 3 — Inspect the DAG before submitting
 
-```bash
-python3 scripts/submit_mimi_pipeline.py --dry-run
-```
-
-### Step 4 — Submit (with your Slurm account and QoS)
+### Step 3 — Submit (with your Slurm account and QoS)
 
 ```bash
 python3 scripts/submit_mimi_pipeline.py \
@@ -149,7 +118,7 @@ python3 scripts/submit_mimi_pipeline.py \
 
 If your cluster does not require an account or QoS, omit those flags.
 
-### Step 5 — Monitor
+### Step 4 — Monitor
 
 ```bash
 squeue -u "$USER"
@@ -158,14 +127,8 @@ squeue -u "$USER"
 Each training lane is submitted as a retry chain. If a job times out, the next attempt resumes
 from `latest_resume.pkl`. Do not restart manually from scratch.
 
-### Step 6 — Compile the paper after the DAG finishes
-
-```bash
-tectonic report/paper.tex
-```
 
 ---
-
 ## C. McGill Slurm (shared env + mimi wrappers)
 
 Use this path when using the pre-built team conda environment on shared storage.
@@ -211,10 +174,6 @@ After any complete run:
 | `artifacts/experiments/<run>/evaluation.csv` | Greedy-evaluator win rate every 5 iterations |
 | `artifacts/experiments/<run>/summary.json` | Final metrics snapshot |
 | `artifacts/experiments/head_to_head_gnn_vs_cnn.json` | GNN vs CNN head-to-head result |
-| `report/figures/gnn_8x8_scratch_curve.png` | Eval + loss curves (paper Figure 1) |
-| `report/figures/transfer_curve.png` | Transfer learning curves (paper Figure 2) |
-| `report/figures/encoding_visualisation.png` | Graph encoding diagram (paper Figure 3) |
-| `report/paper.pdf` | Compiled paper |
 
 ---
 
@@ -226,4 +185,3 @@ After any complete run:
 | Two `jax-cuda*-plugin` packages installed | Uninstall all JAX, reinstall one: `pip uninstall -y jax jaxlib jax-cuda12-plugin jax-cuda12-pjrt jax-cuda13-plugin jax-cuda13-pjrt && pip install "jax[cuda12]"` |
 | Slurm job times out | Do not restart manually. Let the retry chain pick it up from `latest_resume.pkl` |
 | `sbatch: error: Invalid account` | Pass `--account <your-account>` or set `SLURM_ACCOUNT=<account>` |
-| Smoke suite fails | Run `pytest -q -s tests` to isolate the failing unit |

@@ -1,0 +1,15 @@
+{
+  "experiment_name": "cnn_8x8_scratch",
+  "run_name": "cnn_8x8_scratch",
+  "board_size": 8,
+  "model_type": "cnn",
+  "target_iterations": 2,
+  "completed_iterations": 2,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
+  "interrupt_signal": null,
+  "latest_checkpoint": "artifacts/smoke_suite/cnn_8x8_scratch/checkpoints/final.pkl",
+  "final_checkpoint": "artifacts/smoke_suite/cnn_8x8_scratch/checkpoints/final.pkl",
+  "resume_state": "artifacts/smoke_suite/cnn_8x8_scratch/latest_resume.pkl"
+}

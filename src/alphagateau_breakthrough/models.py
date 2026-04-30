@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pickle
 from pathlib import Path
 from typing import Mapping, NamedTuple, Optional, Tuple, cast
@@ -55,7 +53,9 @@ class GATEAU(nn.Module):
     @nn.compact
     def __call__(self, *, graph: BreakthroughGraphsTuple) -> BreakthroughGraphsTuple:
         sum_n_node = graph.nodes.shape[0]
-        sync_updates = (not self.simple_update) if self.sync_updates is None else self.sync_updates
+        sync_updates = (
+            (not self.simple_update) if self.sync_updates is None else self.sync_updates
+        )
         node_features = graph.nodes
         edge_features = graph.edges
 
@@ -82,9 +82,13 @@ class GATEAU(nn.Module):
         )
         if self.mix_edge_node:
             if self.add_features:
-                message = sent_attributes_2 + (edge_features_0 if sync_updates else edge_features)
+                message = sent_attributes_2 + (
+                    edge_features_0 if sync_updates else edge_features
+                )
             else:
-                message = sent_attributes_2 * (edge_features_0 if sync_updates else edge_features)
+                message = sent_attributes_2 * (
+                    edge_features_0 if sync_updates else edge_features
+                )
         else:
             message = sent_attributes_2
         if self.simple_update:
@@ -109,7 +113,9 @@ class EGNN3(nn.Module):
     sync_updates: Optional[bool] = None
 
     @nn.compact
-    def __call__(self, *, graph: BreakthroughGraphsTuple, training: bool = False) -> BreakthroughGraphsTuple:
+    def __call__(
+        self, *, graph: BreakthroughGraphsTuple, training: bool = False
+    ) -> BreakthroughGraphsTuple:
         node_skip = graph.nodes
         edge_skip = graph.edges
         graph = GATEAU(
@@ -138,7 +144,9 @@ class EGNN3(nn.Module):
                 edges=BNR()(x=graph.edges, training=training),
             )
         )
-        return graph._replace(nodes=graph.nodes + node_skip, edges=graph.edges + edge_skip)
+        return graph._replace(
+            nodes=graph.nodes + node_skip, edges=graph.edges + edge_skip
+        )
 
 
 class AlphaGateauModel(nn.Module):
@@ -152,7 +160,9 @@ class AlphaGateauModel(nn.Module):
     sync_updates: Optional[bool] = None
 
     @nn.compact
-    def __call__(self, *, graphs: BreakthroughGraphsTuple, training: bool = False) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def __call__(
+        self, *, graphs: BreakthroughGraphsTuple, training: bool = False
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         graphs = graphs._replace(
             nodes=nn.Dense(self.inner_size)(graphs.nodes),
             edges=nn.Dense(self.inner_size)(graphs.edges),
@@ -212,7 +222,9 @@ class AlphaZeroBaseline(nn.Module):
     n_res_layers: int = 4
 
     @nn.compact
-    def __call__(self, *, x: jnp.ndarray, training: bool = False) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def __call__(
+        self, *, x: jnp.ndarray, training: bool = False
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         x = x.astype(jnp.float32)
         x = nn.Conv(self.inner_size, kernel_size=(3, 3), padding="SAME")(x)
         for _ in range(self.n_res_layers):
@@ -234,13 +246,16 @@ class AlphaZeroBaseline(nn.Module):
         value = nn.Dense(1)(value)
         return logits, jnp.tanh(value).reshape((-1,))
 
+
 class TDValueNet(nn.Module):
     board_size: int
     inner_size: int = 64
     n_res_layers: int = 4
 
     @nn.compact
-    def __call__(self, *, x: jnp.ndarray, training: bool = False) -> Tuple[jnp.ndarray, jnp.ndarray]:
+    def __call__(
+        self, *, x: jnp.ndarray, training: bool = False
+    ) -> Tuple[jnp.ndarray, jnp.ndarray]:
         x = x.astype(jnp.float32)
         x = nn.Conv(self.inner_size, kernel_size=(3, 3), padding="SAME")(x)
         x = jax.nn.relu(x)
@@ -258,7 +273,8 @@ class TDValueNet(nn.Module):
         n_actions = self.board_size * self.board_size * 3
         dummy_logits = jnp.zeros((x.shape[0], n_actions))
         return dummy_logits, jnp.tanh(value).reshape((-1,))
-    
+
+
 class ModelManager(NamedTuple):
     id: str
     model: nn.Module
@@ -266,7 +282,9 @@ class ModelManager(NamedTuple):
     board_size: int
     model_type: str
 
-    def init(self, key: chex.PRNGKey, x: jnp.ndarray | BreakthroughGraphsTuple) -> Mapping[str, chex.ArrayTree]:
+    def init(
+        self, key: chex.PRNGKey, x: jnp.ndarray | BreakthroughGraphsTuple
+    ) -> Mapping[str, chex.ArrayTree]:
         if self.use_graph:
             return self.model.init(key, graphs=cast(BreakthroughGraphsTuple, x))
         return self.model.init(key, x=cast(jnp.ndarray, x))
@@ -290,7 +308,9 @@ class ModelManager(NamedTuple):
         logits = logits - jnp.max(logits, axis=-1, keepdims=True)
         logits = jnp.where(legal_action_mask, logits, jnp.finfo(logits.dtype).min)
         if training:
-            new_batch_stats = mutated.get("batch_stats", {})  # ← safe for no-batchnorm models
+            new_batch_stats = mutated.get(
+                "batch_stats", {}
+            )  # ← safe for no-batchnorm models
             return (logits, value), new_batch_stats
         return logits, value
 
@@ -362,7 +382,7 @@ def build_model_manager(
         )
     if model_type == "td":
         model = TDValueNet(
-            board_size = board_size,
+            board_size=board_size,
             inner_size=inner_size,
             n_res_layers=n_res_layers,
         )
