@@ -100,7 +100,8 @@ and graph interfaces board-size agnostic.
 \paragraph{Model representations.}
 The CNN baseline uses a three-channel tensor (self pieces, opponent pieces, empty squares) fed
 into a residual convolutional network.
-The GNN constructs a graph with one node per square and directed move edges for both players.\footnote{This is in line with the AlphaGateau paper.}
+The GNN constructs a graph with one node per square and directed move edges for both players; see
+Appendix Figure~\ref{fig:encoding} for a visual example of the canonical encoding.\footnote{This is in line with the AlphaGateau paper.}
 Node features encode occupancy, normalized coordinates, and edge-of-board indicators; edge features
 encode move direction, owner, legality, capture structure, and goal-rank information.
 This graph construction preserves the same local feature schema across board sizes, which is the
