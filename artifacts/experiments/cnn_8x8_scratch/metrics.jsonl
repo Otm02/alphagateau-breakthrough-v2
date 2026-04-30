@@ -1,4 +1,4 @@
-{"iteration": 1, "replay_size": 16, "policy_loss": 3.5430479049682617, "value_loss": 0.0, "greedy_win_rate": 0.0, "greedy_draw_rate": 1.0, "greedy_loss_rate": 0.0}
+{"iteration": 1, "replay_size": 16, "policy_loss": 3.5430479049682617, "value_loss": 0.0}
 {"iteration": 2, "replay_size": 12304, "policy_loss": 3.154974615201354, "value_loss": 0.3670092172299822}
 {"iteration": 3, "replay_size": 24592, "policy_loss": 3.0892825182527304, "value_loss": 0.34893155361836153}
 {"iteration": 4, "replay_size": 36880, "policy_loss": 2.992081420703067, "value_loss": 0.3215700724136291}
