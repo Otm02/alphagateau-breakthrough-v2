@@ -27,3 +27,4 @@
 {"iteration": 27, "replay_size": 50000, "policy_loss": 1.6861500587414535, "value_loss": 0.12883863093333842}
 {"iteration": 28, "replay_size": 50000, "policy_loss": 1.636927317031367, "value_loss": 0.12536045334781265}
 {"iteration": 29, "replay_size": 50000, "policy_loss": 1.6343381478142343, "value_loss": 0.1363269858293011}
+{"iteration": 30, "replay_size": 50000, "policy_loss": 1.639413167893047, "value_loss": 0.1516681141315431, "greedy_win_rate": 0.5833333333333334, "greedy_draw_rate": 0.0, "greedy_loss_rate": 0.4166666666666667}
