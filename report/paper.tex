@@ -34,14 +34,10 @@
 
 \begin{abstract}
 
-We study whether a board-size-invariant graph encoder improves self-play learning and cross-board transfer in the game Breakthrough.
-Using an AlphaZero-style training loop,
-we compare a graph neural network (GNN) with a convolutional neural network (CNN) baseline on 8$\times$8 play
-and evaluate transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning.
-The CNN converges to 100\% greedy-evaluation win rate within 40 iterations while the GNN
-plateaus at 42\% with high variance throughout training.
-Pretraining on 5$\times$5 provides a strong early transfer benefit, improving iteration-5 win rate on 8$\times$8 from 17\% to 67\%,
-but does not eliminate the CNN's long-run advantage.
+We study whether a board-size-invariant graph encoder improves self-play learning and cross-board transfer in Breakthrough.
+Using an AlphaZero-style training loop, we compare a graph neural network (GNN) with a convolutional neural network (CNN) on 8$\times$8 play and in 5$\times$5$\rightarrow$8$\times$8 transfer.
+Under our training budget, the CNN reaches a 100\% greedy-evaluation win rate by iteration 40, while the GNN plateaus near 42\% with high variance.
+Pretraining on 5$\times$5 improves early 8$\times$8 performance from 17\% to 67\% at iteration 5, but does not remove the CNN's long-run advantage.
 In a direct 12-game match, the CNN defeats the GNN 10 games to 2.
 \end{abstract}
 
