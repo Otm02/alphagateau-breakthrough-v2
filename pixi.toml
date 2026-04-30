@@ -3,7 +3,7 @@ name = "alphagateau-breakthrough"
 version = "0.1.0"
 description = "AlphaGateau-style Breakthrough training, evaluation, and submission pipeline."
 channels = ["conda-forge"]
-platforms = ["win-64", "linux-64"]
+platforms = ["win-64", "linux-64", "osx-arm64"]
 
 [dependencies]
 python = "3.11.*"

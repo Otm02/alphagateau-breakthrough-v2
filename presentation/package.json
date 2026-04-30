@@ -1,0 +1,15 @@
+{
+  "name": "alphagateau-breakthrough-presentation",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Minimal reveal.js setup for presentation/slides.md",
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "reveal.js": "^5.1.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.10"
+  }
+}
