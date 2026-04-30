@@ -271,8 +271,9 @@ Breakthrough tactics.
 The GNN introduces additional parameters through attention pooling and edge feature MLPs, making
 it harder to optimize under a fixed 40-iteration budget with a single learning rate.
 Figure~\ref{fig:scratch} shows the fixed-LR GNN policy loss plateauing near 2.05 while the CNN
-continues improving. We hypothesize that a larger iteration budget, decaying learning rates, or a
-simplified GNN variant without attention pooling could close part of this gap.
+continues improving.
+Adding cosine decay allows the loss to continue decreasing.
+We hypothesize that a larger iteration budget or a simplified GNN variant without attention pooling could further close this gap.
 
 \paragraph{Transfer benefit and limits.}
 Transfer from 5$\times$5 pretraining produces a real, quantifiable early-training benefit:
