@@ -31,5 +31,4 @@ activate_conda_target
     --time=02:00:00 \
     --output="$LOGS/h2h_5x5_to_8x8_vs_cnn_%j.out" \
     --error="$LOGS/h2h_5x5_to_8x8_vs_cnn_%j.err" \
-    --wrap="python scripts/evaluate_models.py '$OUT/gnn_8x8_finetune_cosine/checkpoints/final.pkl' '$OUT/
-cnn_8x8_scratch/checkpoints/final.pkl' --output '$OUT/head_to_head_gnn_5x5_to_8x8_vs_cnn.json'"
+    --wrap="python scripts/evaluate_models.py '$OUT/gnn_8x8_finetune_cosine/checkpoints/final.pkl' '$OUT/cnn_8x8_scratch/checkpoints/final.pkl' --output '$OUT/head_to_head_gnn_5x5_to_8x8_vs_cnn.json'"
