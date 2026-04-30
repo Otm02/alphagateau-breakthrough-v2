@@ -132,8 +132,6 @@ Every five iterations we play 12 games against a greedy evaluator and record the
 For the policy-based agents, the greedy evaluator always picks the highest-policy action.
 After training, we run a 12-game head-to-head match between the final GNN and CNN scratch
 checkpoints.
-We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
-fine-tuning.
 For the progressive transfer experiment, we evaluate each stage only on its current board size; we
 do not re-evaluate the final 8$\times$8 checkpoint on earlier boards, so these results reflect
 stagewise transfer rather than catastrophic forgetting.
