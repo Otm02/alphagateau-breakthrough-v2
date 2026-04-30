@@ -84,11 +84,10 @@ AlphaGateau~\cite{alphagateau} replaces the convolutional encoder in AlphaZero w
 neural network, aiming to better represent the relational structure of board games.
 It uses graph attention~\cite{gat} with residual message passing layers.
 
-Prior work on Breakthrough has focused primarily on exact game solving rather than self-play learning.
-Early work combined race patterns with job-level proof-number search to solve the 6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}.
-More recently, the 6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
-race patterns, proof-number-based search, and a neural-network-guided job scheduler~\cite{jonsson2025solving}.
-These results show that, despite simple rules, Breakthrough is strategically rich enough to support substantial search and solving research.
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play
+learning~\cite{saffidine2011breakthrough,jonsson2025solving}. We defer those details to
+Appendix~\ref{app:background} because our focus is representation learning and transfer rather
+than solving methodology.
 
 Those exact-solving systems aim to prove the game-theoretic value of positions.
 Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study whether learned policy/value models can play effectively under self-play.
@@ -320,6 +319,17 @@ Optax, Jraph, MCTX, and the McGill department GPU infrastructure on \texttt{mimi
 
 \newpage
 \appendix
+\section{Additional Background}
+\label{app:background}
+
+Prior work on Breakthrough has focused primarily on exact game solving rather than self-play
+learning. Early work combined race patterns with job-level proof-number search to solve the
+6$\times$5 variant as a second-player win~\cite{saffidine2011breakthrough}. More recently, the
+6$\times$6 game was weakly solved as a first-player win using a hybrid of endgame tablebases,
+race patterns, proof-number-based search, and a neural-network-guided job scheduler
+~\cite{jonsson2025solving}. These results show that, despite simple rules, Breakthrough is
+strategically rich enough to support substantial search and solving research.
+
 \section{TD($\lambda$) Baseline}
 \label{app:tdlambda}
 
