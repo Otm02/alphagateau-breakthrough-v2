@@ -1,0 +1,29 @@
+{
+  "experiment_name": "gnn_5x5_pretrain",
+  "run_name": "gnn_5x5_pretrain",
+  "board_size": 5,
+  "model_type": "gnn",
+  "final_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_5x5_pretrain/checkpoints/final.pkl",
+  "final_iteration": 40,
+  "target_iterations": 40,
+  "status": "completed",
+  "resume_state": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_5x5_pretrain/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 40,
+    "replay_size": 50000,
+    "policy_loss": 1.188015899798629,
+    "value_loss": 0.3104994849667964,
+    "greedy_win_rate": 1.0,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 0.0
+  },
+  "latest_eval": {
+    "iteration": 40,
+    "wins": 12,
+    "draws": 0,
+    "losses": 0,
+    "win_rate": 1.0,
+    "draw_rate": 0.0,
+    "loss_rate": 0.0
+  }
+}

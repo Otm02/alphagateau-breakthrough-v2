@@ -1,0 +1,29 @@
+{
+  "experiment_name": "gnn_8x8_finetune",
+  "run_name": "gnn_8x8_finetune",
+  "board_size": 8,
+  "model_type": "gnn",
+  "final_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_8x8_finetune/checkpoints/final.pkl",
+  "final_iteration": 30,
+  "target_iterations": 30,
+  "status": "completed",
+  "resume_state": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_8x8_finetune/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 30,
+    "replay_size": 50000,
+    "policy_loss": 2.0688481394215827,
+    "value_loss": 0.18108354304963664,
+    "greedy_win_rate": 0.6666666666666666,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 0.3333333333333333
+  },
+  "latest_eval": {
+    "iteration": 30,
+    "wins": 8,
+    "draws": 0,
+    "losses": 4,
+    "win_rate": 0.6666666666666666,
+    "draw_rate": 0.0,
+    "loss_rate": 0.3333333333333333
+  }
+}

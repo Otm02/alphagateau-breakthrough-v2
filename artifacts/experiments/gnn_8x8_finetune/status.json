@@ -1,0 +1,15 @@
+{
+  "experiment_name": "gnn_8x8_finetune",
+  "run_name": "gnn_8x8_finetune",
+  "board_size": 8,
+  "model_type": "gnn",
+  "target_iterations": 30,
+  "completed_iterations": 30,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
+  "interrupt_signal": null,
+  "latest_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_8x8_finetune/checkpoints/final.pkl",
+  "final_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_8x8_finetune/checkpoints/final.pkl",
+  "resume_state": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_8x8_finetune/latest_resume.pkl"
+}

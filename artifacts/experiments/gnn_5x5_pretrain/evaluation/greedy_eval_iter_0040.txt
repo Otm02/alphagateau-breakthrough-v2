@@ -1,0 +1,17 @@
+b2-b3
+c4xb3
+a2xb3
+a4xb3
+c2xb3
+e4-e3
+e2-d3
+e3xd2
+e1xd2
+d4-e3
+d2xe3
+b4-c3
+e3-e4
+d5xe4
+d3xe4
+c3-c2
+e4-d5

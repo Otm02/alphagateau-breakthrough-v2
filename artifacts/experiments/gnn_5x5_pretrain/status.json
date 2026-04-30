@@ -1,0 +1,15 @@
+{
+  "experiment_name": "gnn_5x5_pretrain",
+  "run_name": "gnn_5x5_pretrain",
+  "board_size": 5,
+  "model_type": "gnn",
+  "target_iterations": 40,
+  "completed_iterations": 40,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
+  "interrupt_signal": null,
+  "latest_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_5x5_pretrain/checkpoints/final.pkl",
+  "final_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_5x5_pretrain/checkpoints/final.pkl",
+  "resume_state": "/mnt/teaching/slurm/abenar4/artifacts/experiments/gnn_5x5_pretrain/latest_resume.pkl"
+}
