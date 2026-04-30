@@ -136,7 +136,8 @@ Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterat
 128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{Thirty iterations were used for fine-tuning to measure whether transfer learning improves early 8$\times$8 learning faster than training from scratch. The goal was not to over optimize the fine-tuned model.}
 Third, we repeated selected GNN runs with cosine decay in place of a fixed learning rate to study
 whether a learning-rate schedule improved optimization.
-Fourth, we trained a TD($\lambda$) baseline using a value-only CNN with no policy head or MCTS.\footnote{Refer to Appendix A for the detailed results and discussion.}
+Fourth, we also evaluated a value-only TD($\lambda$) baseline; detailed setup and results are
+deferred to Appendix~\ref{app:tdlambda}.
 We also explored a progressive transfer pipeline of 5$\times$5 to 6$\times$6 to 8$\times$8 as an
 additional transfer ablation aimed at bridging the gap between board sizes.
 
@@ -147,8 +148,6 @@ After training, we run a 12-game head-to-head match between the final GNN and CN
 checkpoints.
 We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
 fine-tuning.
-Since our TD baseline has no policy head, it is evaluated using greedy value-based play, selecting
-the action whose successor state has the highest predicted value rather than using MCTS.
 For the progressive transfer experiment, we evaluate each stage only on its current board size; we
 do not re-evaluate the final 8$\times$8 checkpoint on earlier boards, so these results should be
 interpreted as stagewise transfer rather than a direct measure of catastrophic forgetting.
@@ -166,8 +165,6 @@ Figure~\ref{fig:encoding} illustrates the graph encoding.
 \toprule
 Run & Iters & Peak win rate & Final win rate \\
 \midrule
-TD($\lambda$) 5$\times$5 scratch        & 40 & 1.00 @ iter 10 & 0.83 @ iter 40 \\
-TD($\lambda$) 8$\times$8 scratch        & 40 & 0.58 @ iter 40 & 0.58 @ iter 40 \\
 GNN 8$\times$8 scratch                  & 40 & 0.67 @ iter 20 & 0.42 @ iter 40 \\
 CNN 8$\times$8 scratch                  & 40 & 1.00 @ iter 40 & 1.00 @ iter 40 \\
 GNN 5$\times$5 pretrain                 & 40 & 1.00 @ iter 20 & 1.00 @ iter 40 \\
@@ -192,9 +189,7 @@ The GNN peaks at 0.67 at iteration 20, then oscillates between 0.25 and 0.58 for
 training, ending at 0.42.
 The policy loss curves confirm this: the CNN's policy loss descends steadily to 1.97 by iteration
 40, while the GNN's policy loss plateaus at approximately 2.05 from iteration 36 onward, indicating
-convergence to a suboptimal policy.
-
-The head-to-head match between final checkpoints confirms the scratch training advantage: the CNN
+convergence to a suboptimal policy. The head-to-head match between final checkpoints confirms the scratch training advantage: the CNN
 wins 10 of 12 games (83\%), with the GNN winning only 2 (17\%).
 
 \paragraph{Transfer learning.}
@@ -234,6 +229,10 @@ from 2.08 to 1.64. Compared with direct cosine transfer, which finishes at 0.83 
 the progressive pipeline is clearly worse on the final target board. The intermediate stage
 therefore helps adjacent-board adaptation, but it does not improve final 8$\times$8 performance
 under the current budget.
+
+\paragraph{TD($\lambda$) baseline.}
+The value-only TD($\lambda$) baseline remains clearly weaker than the MCTS-based agents; full
+setup, results, and discussion are provided in Appendix~\ref{app:tdlambda}.
 
 \begin{figure}[t]
   \centering
@@ -336,8 +335,8 @@ transfer from 5$\times$5 pretraining meaningfully accelerates early 8$\times$8 l
 not fully compensate for the GNN's convergence disadvantage versus the CNN; (3) cosine LR
 scheduling substantially improves GNN optimization and raises the final direct-transfer 8$\times$8
 win rate to 0.83; (4) progressive transfer through 6$\times$6 helps the intermediate board but
-does not improve final 8$\times$8 performance under the current budget; and (5) the TD learning
-fails to rival a greedy evaluator, demonstrating the need for MCTS lookahead.
+does not improve final 8$\times$8 performance under the current budget. The appendix-only TD($\lambda$)
+baseline also underperforms the search-based agents, reinforcing the importance of MCTS lookahead.
 
 Promising future directions include: running a longer fine-tuning budget (60--80 iterations) to
 test whether the fine-tuned GNN can eventually match the CNN; running ablations that disable attention pooling or simplify edge features; increasing the evaluation game count to reduce win-rate noise; and repeating with the updated 256-ply cap
@@ -364,10 +363,13 @@ Optax, Jraph, MCTX, and the McGill department GPU infrastructure on \texttt{mimi
 
 \newpage
 \appendix
-\section{TD($\lambda$) Results and Discussion}
-%TODO: transfer here.
+\section{TD($\lambda$) Baseline}
+\label{app:tdlambda}
 
 For TD($\lambda$), we use $\lambda = 0.7$ and $\epsilon$-greedy self-play; the 5$\times$5 run uses 128 episodes per iteration and a 96-ply move cap, while the 8$\times$8 run uses 64 episodes per iteration and a 256-ply move cap, with both running for 40 iterations at learning rate $10^{-3}$.
+\paragraph{Evaluation protocol.}
+Since the TD baseline has no policy head, it is evaluated using greedy value-based play, selecting
+the action whose successor state has the highest predicted value rather than using MCTS.
 \paragraph{TD($\lambda$) baseline Results.}
 TD($\lambda$) remains much weaker than the MCTS-based agents against the greedy evaluator. On the
 5$\times$5 board it reaches a peak win rate of 1.00 at iteration 10 before falling back to 0.83

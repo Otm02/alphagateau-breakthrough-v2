@@ -80,26 +80,16 @@ def add_stage_markers(ax, stage_ranges: list[tuple[str, int, int]], transition_p
         midpoint = start + (end - start) / 2
         ax.text(
             midpoint,
-            1.02,
-            board_size,
+            0.985,
+            f"{board_size} stage",
             transform=ax.get_xaxis_transform(),
             ha="center",
-            va="bottom",
+            va="top",
             fontsize=10,
+            bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.8, "pad": 1.5},
         )
     for x in transition_points:
         ax.axvline(x=x, linestyle="--", linewidth=1.5, alpha=0.7, color="#4c78a8")
-        ax.text(
-            x,
-            1.0,
-            f"transition @ {x}",
-            transform=ax.get_xaxis_transform(),
-            rotation=90,
-            ha="right",
-            va="top",
-            fontsize=8,
-            color="#4c78a8",
-        )
 
 
 def save_pipeline_plot(
@@ -113,34 +103,29 @@ def save_pipeline_plot(
     filename: str,
     output_dir: Path,
 ) -> None:
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(11, 5.8))
     clean_df = df.dropna(subset=[metric_col])
     ax.plot(
         clean_df["global_iteration"],
         clean_df[metric_col],
         linewidth=2.2,
         marker="o",
-        markersize=4,
+        markersize=5,
         color="#1f77b4",
     )
     add_stage_markers(ax, stage_ranges, transition_points)
     ax.set_xlabel("Global Training Iteration")
     ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set_title(title, pad=12)
+    x_min = max(0, int(clean_df["global_iteration"].min()) - 2)
+    x_max = int(clean_df["global_iteration"].max()) + 2
+    ax.set_xlim(x_min, x_max)
     if metric_col == "greedy_win_rate":
         ax.set_ylim(0.0, 1.0)
+        ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
     ax.grid(True, alpha=0.3)
-    ax.text(
-        0.99,
-        0.02,
-        "Each checkpoint win rate uses 12 games.",
-        transform=ax.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=9,
-        color="#444444",
-    )
-    fig.tight_layout()
+    ax.margins(x=0.01)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
     output_path = output_dir / filename
     fig.savefig(output_path, dpi=300)
     plt.close(fig)
@@ -156,7 +141,7 @@ def save_eight_by_eight_comparison(
     direct_8x8 = direct_df[direct_df["board_size"] == "8x8"].dropna(subset=["greedy_win_rate"])
     progressive_8x8 = progressive_df[progressive_df["board_size"] == "8x8"].dropna(subset=["greedy_win_rate"])
 
-    fig, ax = plt.subplots(figsize=(8.5, 5))
+    fig, ax = plt.subplots(figsize=(8.2, 5.2))
     ax.plot(
         direct_8x8["local_iteration"],
         direct_8x8["greedy_win_rate"],
@@ -177,18 +162,9 @@ def save_eight_by_eight_comparison(
     ax.set_xlabel("8x8 Local Iteration")
     ax.set_ylabel("Greedy Win Rate")
     ax.set_ylim(0.0, 1.0)
+    ax.set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
     ax.grid(True, alpha=0.3)
-    ax.legend()
-    ax.text(
-        0.99,
-        0.02,
-        "Final win rates: direct 0.83, progressive 0.58",
-        transform=ax.transAxes,
-        ha="right",
-        va="bottom",
-        fontsize=9,
-        color="#444444",
-    )
+    ax.legend(frameon=True, loc="upper right")
     fig.tight_layout()
     output_path = output_dir / "gnn_progressive_transfer_8x8_comparison.png"
     fig.savefig(output_path, dpi=300)
@@ -225,7 +201,7 @@ def main() -> None:
         stage_ranges=direct_stage_ranges,
         metric_col="greedy_win_rate",
         ylabel="Greedy Win Rate",
-        title="Direct Transfer Pipeline (5x5 -> 8x8): Win Rate Evolution",
+        title="Direct Transfer: 5x5 to 8x8",
         filename="gnn_5x5_to_8x8_winrate.png",
         output_dir=output_dir,
     )
@@ -235,7 +211,7 @@ def main() -> None:
         stage_ranges=direct_stage_ranges,
         metric_col="policy_loss",
         ylabel="Policy Loss",
-        title="Direct Transfer Pipeline (5x5 -> 8x8): Policy Loss Evolution",
+        title="Direct Transfer: 5x5 to 8x8 Policy Loss",
         filename="gnn_5x5_to_8x8_policy_loss.png",
         output_dir=output_dir,
     )
@@ -245,7 +221,7 @@ def main() -> None:
         stage_ranges=progressive_stage_ranges,
         metric_col="greedy_win_rate",
         ylabel="Greedy Win Rate",
-        title="Progressive Transfer Pipeline (5x5 -> 6x6 -> 8x8): Win Rate Evolution",
+        title="Progressive Transfer: 5x5 to 6x6 to 8x8",
         filename="gnn_5x5_6x6_8x8_progressive_winrate.png",
         output_dir=output_dir,
     )
@@ -255,7 +231,7 @@ def main() -> None:
         stage_ranges=progressive_stage_ranges,
         metric_col="policy_loss",
         ylabel="Policy Loss",
-        title="Progressive Transfer Pipeline (5x5 -> 6x6 -> 8x8): Policy Loss Evolution",
+        title="Progressive Transfer: 5x5 to 6x6 to 8x8 Policy Loss",
         filename="gnn_5x5_6x6_8x8_progressive_policy_loss.png",
         output_dir=output_dir,
     )
