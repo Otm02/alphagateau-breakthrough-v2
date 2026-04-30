@@ -52,17 +52,17 @@ Breakthrough is a two-player abstract strategy game played on an $8\times8$ boar
 Despite its simple rules, the game is strategically rich and has a large state space of approximately $1.5\times 10^{16}$ \cite{jonsson2025solving}.
 Figure~\ref{fig:rules} illustrates the starting position and the legal forward and diagonal-capture moves that define the game.
 
-Breakthrough is a useful testbed for studying learned representations in reinforcement learning.
-Its rules are simple, but successful play depends heavily on local geometry: pieces move only forward, captures are diagonal, and reaching the opponent's back rank ends the game.
-This structure makes the game a natural candidate for graph-based representations, in which squares are nodes and legal relations are edges rather than purely image-like grid encodings.
-It is especially attractive for transfer experiments because the same local move rules apply across board sizes.
+Breakthrough is a useful testbed for representation learning because strong play depends on local,
+directional structure, making the game a natural candidate for graph-based encodings rather than
+purely image-like grid representations. It is also attractive for transfer experiments because the
+same local move rules apply across board sizes.
 
-Our project studies two questions.
-First, under a fixed self-play training budget, does an AlphaGateau-style graph neural network (GNN) outperform a simpler convolutional neural network (CNN) baseline on 8$\times$8 Breakthrough?
-Second, does the GNN's board-size-invariant representation make transfer from 5$\times$5 pretraining to 8$\times$8 fine-tuning meaningful?
-To answer these questions, we built a JAX-based self-play training and evaluation pipeline for Breakthrough and compared graph and convolutional agents under matched settings.
-Our main findings are that the CNN baseline outperforms the GNN from scratch on 8$\times$8, while 5$\times$5 pretraining gives the GNN a clear early advantage during transfer without closing the full gap to the
-CNN.
+We study two questions: whether an AlphaGateau-style graph neural network (GNN) can outperform a
+simpler convolutional neural network (CNN) on 8$\times$8 Breakthrough under a fixed self-play
+budget, and whether the GNN's board-size-invariant representation makes
+5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful. Under our training budget, the CNN is
+stronger from scratch, while 5$\times$5 pretraining gives the GNN a clear early transfer benefit
+without closing the full gap.
 
 \begin{figure}[t]
   \centering
