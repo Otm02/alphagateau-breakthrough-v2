@@ -39,7 +39,7 @@ We study whether a board-size-invariant graph encoder improves self-play learnin
 Using an AlphaZero-style training loop, we compare a graph neural network (GNN) with a convolutional neural network (CNN) on 8$\times$8 play and in 5$\times$5$\rightarrow$8$\times$8 transfer.
 Under our training budget, the CNN reaches a 100\% greedy-evaluation win rate by iteration 40, while the GNN plateaus near 42\%.
 Pretraining on 5$\times$5 improves early 8$\times$8 performance from 17\% to 67\% at iteration 5, but does not remove the CNN's long-run advantage.
-In a direct 12-game match, the CNN defeats the GNN 7 games to 5.
+In a direct 12-game match, the CNN defeats the best GNN 7 games to 5.
 \end{abstract}
 
 \section{Introduction}
@@ -266,9 +266,9 @@ features.
 Athmane Benarous focused on the JAX environment, training pipeline, Slurm orchestration, code
 pipeline setup, CNN model training, report drafting, and head-to-head comparisons.
 Farooq Khan focused on the transfer-learning baseline, head-to-head comparisons, presentation
-slides, video recording, and report writing.
+slides, video recording, background research, and report writing.
 Andrew Saffar focused on transfer learning, the TD($\lambda$) baseline, presentation slides,
-video recording, and report drafting.
+video recording, figure creation, and report drafting.
 
 \textbf{Acknowledgements.}
 We thank the AlphaGateau project for the architectural reference point and build on JAX, Flax,
