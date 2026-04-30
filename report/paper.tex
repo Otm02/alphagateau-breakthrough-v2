@@ -233,10 +233,6 @@ against the final CNN checkpoint, the progressive model performs best in this sm
 comparison, improving to 5 wins in 12 games (Table~\ref{tab:head_to_head}). Full
 curves and interpretation are deferred to Appendix~\ref{app:additional_curves}.
 
-\paragraph{TD($\lambda$) baseline.}
-The value-only TD($\lambda$) baseline remains clearly weaker than the MCTS-based agents; full
-setup, results, and discussion are provided in Appendix~\ref{app:tdlambda}.
-
 \begin{figure}[t]
   \centering
   \includegraphics[width=\linewidth]{gnn_8x8_scratch_curve.png}
@@ -308,7 +304,7 @@ to the CNN. Our main transfer result is the GNN pretrained on 5$\times$5 and the
 directly on 8$\times$8 with cosine decay, because it achieves the best final greedy-evaluator
 score among the transfer runs. The progressive 5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8
 pipeline performs worse on that metric but slightly better in the small final head-to-head against
-the CNN, and the appendix-only TD($\lambda$) baseline remains weaker than the MCTS-based agents.
+the CNN.
 
 The most useful next steps are to extend the fine-tuning budget, increase the evaluation game
 count to reduce variance, and run GNN ablations that simplify attention pooling or edge features.
