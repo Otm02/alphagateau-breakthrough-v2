@@ -1,0 +1,15 @@
+{
+  "experiment_name": "gnn_5x5_pretrain",
+  "run_name": "gnn_5x5_pretrain",
+  "board_size": 5,
+  "model_type": "gnn",
+  "target_iterations": 2,
+  "completed_iterations": 2,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
+  "interrupt_signal": null,
+  "latest_checkpoint": "artifacts/smoke_suite/gnn_5x5_pretrain/checkpoints/final.pkl",
+  "final_checkpoint": "artifacts/smoke_suite/gnn_5x5_pretrain/checkpoints/final.pkl",
+  "resume_state": "artifacts/smoke_suite/gnn_5x5_pretrain/latest_resume.pkl"
+}

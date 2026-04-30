@@ -1,0 +1,29 @@
+{
+  "experiment_name": "gnn_5x5_pretrain",
+  "run_name": "gnn_5x5_pretrain",
+  "board_size": 5,
+  "model_type": "gnn",
+  "final_checkpoint": "artifacts/smoke_suite/gnn_5x5_pretrain/checkpoints/final.pkl",
+  "final_iteration": 2,
+  "target_iterations": 2,
+  "status": "completed",
+  "resume_state": "artifacts/smoke_suite/gnn_5x5_pretrain/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 2,
+    "replay_size": 120,
+    "policy_loss": 2.4311644236246743,
+    "value_loss": 0.26941101749738056,
+    "greedy_win_rate": 0.0,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 1.0
+  },
+  "latest_eval": {
+    "iteration": 2,
+    "wins": 0,
+    "draws": 0,
+    "losses": 2,
+    "win_rate": 0.0,
+    "draw_rate": 0.0,
+    "loss_rate": 1.0
+  }
+}

@@ -1,0 +1,3 @@
+iteration,replay_size,policy_loss,value_loss,greedy_win_rate,greedy_draw_rate,greedy_loss_rate
+1,64,3.299061417579651,0.0,,,
+2,128,3.2272852659225464,0.0,0.0,0.0,1.0

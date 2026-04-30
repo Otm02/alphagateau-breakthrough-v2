@@ -1,0 +1,28 @@
+{
+  "checkpoint_a": "artifacts/smoke_suite/gnn_8x8_scratch/checkpoints/final.pkl",
+  "checkpoint_b": "artifacts/smoke_suite/cnn_8x8_scratch/checkpoints/final.pkl",
+  "wins": 0,
+  "draws": 2,
+  "losses": 0,
+  "win_rate": 0.0,
+  "draw_rate": 1.0,
+  "loss_rate": 0.0,
+  "sample_moves": [
+    "a2-a3",
+    "h7-g6",
+    "b2-c3",
+    "b7-a6",
+    "f2-e3",
+    "d7-c6",
+    "d2-d3",
+    "c7-b6",
+    "g2-h3",
+    "c8-c7",
+    "d3-d4",
+    "h8-h7",
+    "g1-g2",
+    "e7-e6",
+    "a3-a4",
+    "a8-b7"
+  ]
+}
