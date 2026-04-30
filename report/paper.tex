@@ -228,47 +228,21 @@ curves to Appendix~\ref{app:additional_curves}.
 %5$\times$5~$\rightarrow$~8$\times$8 transfer question end-to-end.
 
 \paragraph{Why the CNN outperforms the GNN.}
-The CNN's advantage on 8$\times$8 Breakthrough is a meaningful negative result.
-One likely explanation is inductive bias: on a regular grid, convolutions share weights across
-all spatial positions and efficiently capture the local, directional patterns that dominate
-Breakthrough tactics.
-The GNN introduces additional parameters through attention pooling and edge feature MLPs, making
-it harder to optimize under a fixed 40-iteration budget with a single learning rate.
-Figure~\ref{fig:scratch} shows the fixed-LR GNN policy loss plateauing near 2.05 while the CNN
-continues improving.
-Adding cosine decay allows the loss to continue decreasing.
-We hypothesize that a larger iteration budget or a simplified GNN variant without attention pooling could further close this gap.
+The CNN's advantage on 8$\times$8 Breakthrough is a meaningful negative result. On a regular grid,
+convolutions share weights across spatial positions and efficiently capture the local, directional
+patterns that dominate Breakthrough tactics. The GNN adds extra optimization burden through
+attention pooling and edge-feature processing, which appears harder to train under the fixed
+40-iteration budget. Figure~\ref{fig:scratch} is consistent with this interpretation.
 
 \paragraph{Transfer benefit and limits.}
 Transfer from 5$\times$5 pretraining produces a real, quantifiable early-training benefit:
 the fine-tuned model starts 4$\times$ higher than the scratch GNN at iteration 5.
 This confirms our second hypothesis: the GNN's board-size-invariant representation supports
 meaningful knowledge transfer.
-However, the benefit is largest early in fine-tuning and shrinks as both models train longer.
-This suggests the pretrained features provide a good initialisation rather than a structural
-advantage that compounds.
-Using cosine decay for the direct 5$\times$5~$\rightarrow$~8$\times$8 fine-tuning run improves the final checkpoint to 0.83 and removes the late-stage drop
-visible in the fixed-LR transfer run. An interesting follow-up is whether increasing the
-fine-tuning budget beyond 30 iterations would allow the fine-tuned GNN to match or surpass the
-CNN. The direct head-to-head table sharpens this point: transfer does not overturn the final
-ranking, but it does reduce the gap substantially, with the direct 5$\times$5~$\rightarrow$~8$\times$8
-cosine-decay run improving from 2 wins to 4 wins in 12 games against the same CNN, and the
-progressive run reaching 5 wins in 12.
-
-\paragraph{Evaluation noise.}
-Each win-rate data point comes from 12 games, giving a standard deviation of approximately
-$\sqrt{p(1-p)/12} \approx 0.14$ for $p \approx 0.5$.
-The oscillations in the GNN win-rate curve---most visible between iterations 20 and 40---are
-consistent with this level of noise around a slowly moving mean.
-A larger evaluation budget (e.g., 50--100 games per checkpoint) would substantially reduce this
-variance in future runs.
-
-\paragraph{Methodological limit.}
-The progressive-transfer plots should not be interpreted as a direct measurement of catastrophic
-forgetting. We do not re-evaluate the final 8$\times$8 checkpoint on the earlier 5$\times$5 or
-6$\times$6 tasks, so the current data only shows stage-transition behaviour on the active board
-size. Appendix~\ref{app:additional_curves} therefore supports only a stagewise transfer claim, not
-a true forgetting analysis.
+However, the benefit is largest early in fine-tuning and shrinks as both models train longer,
+suggesting that pretraining provides a stronger initialisation rather than a compounding structural
+advantage. Using cosine decay improves the final transferred checkpoint to 0.83 and reduces the
+late-stage drop seen with a fixed learning rate.
 
 \section{Conclusion and Future Work}
 
@@ -277,12 +251,9 @@ CNN remains the strongest model on 8$\times$8 from scratch. GNN transfer from
 5$\times$5 meaningfully improves early 8$\times$8 learning and narrows the final head-to-head gap
 to the CNN. Our main transfer result is the GNN pretrained on 5$\times$5 and then fine-tuned
 directly on 8$\times$8 with cosine decay, because it achieves the best final greedy-evaluator
-score among the transfer runs. The progressive 5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8
-pipeline performs worse on that metric but slightly better in the small final head-to-head against
-the CNN.
-
-The most useful next steps are to extend the fine-tuning budget, increase the evaluation game
-count to reduce variance, and run GNN ablations that simplify attention pooling or edge features.
+score among the transfer runs. The most useful next steps are to extend the fine-tuning budget,
+increase the evaluation game count, and run GNN ablations that simplify attention pooling or edge
+features.
 
 
 \newpage
