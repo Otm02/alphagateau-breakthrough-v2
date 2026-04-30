@@ -125,16 +125,16 @@ Unless otherwise noted, the learning rate is $10^{-3}$.
 \paragraph{Experiment configurations.}
 We ran four groups of experiments.
 First, in the 8$\times$8 scratch comparison, the CNN and GNN were trained from scratch for
-40 iterations\footnote{We used 40 iterations as the standard training budget for the main experiments because due to our single-GPU compute budget.}
+40 iterations\footnote{We used 40 iterations as the standard budget because of our single-GPU compute constraints.}
 with 64 self-play games per iteration and a 192-ply move cap.
 Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterations using
-128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{Thirty iterations were used for fine-tuning to measure whether transfer learning improves early 8$\times$8 learning faster than training from scratch. The goal was not to over optimize the fine-tuned model.}
+128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{We used 30 fine-tuning iterations to measure early 8$\times$8 transfer gains rather than fully optimize the transferred model.}
 Third, we repeated selected GNN runs with cosine decay in place of a fixed learning rate to study
 whether a learning-rate schedule improved optimization.
 Fourth, we also evaluated a value-only TD($\lambda$) baseline; detailed setup and results are
 deferred to Appendix~\ref{app:tdlambda}.
 We also explored a progressive transfer pipeline of 5$\times$5 to 6$\times$6 to 8$\times$8 as an
-additional transfer ablation aimed at bridging the gap between board sizes.
+additional transfer ablation to bridge board sizes.
 
 \paragraph{Evaluation protocol.}
 Every five iterations we play 12 games against a greedy evaluator and record the win rate.
@@ -144,14 +144,13 @@ checkpoints.
 We also record zero-shot 8$\times$8 performance of the 5$\times$5 pretrained model before any
 fine-tuning.
 For the progressive transfer experiment, we evaluate each stage only on its current board size; we
-do not re-evaluate the final 8$\times$8 checkpoint on earlier boards, so these results should be
-interpreted as stagewise transfer rather than a direct measure of catastrophic forgetting.
+do not re-evaluate the final 8$\times$8 checkpoint on earlier boards, so these results reflect
+stagewise transfer rather than catastrophic forgetting.
 \section{Results}
 
-Table~\ref{tab:results} summarises the main scratch, transfer, cosine-scheduled, and progressive-transfer runs.
-Table~\ref{tab:head_to_head} reports direct 12-game matches between the final CNN checkpoint and
-each final GNN variant. Figure~\ref{fig:scratch} visualises the main 8$\times$8 scratch
-comparison, while the progressive transfer curve is deferred to Appendix~\ref{app:additional_curves}.
+Table~\ref{tab:results} summarises the main training runs, Table~\ref{tab:head_to_head} reports
+the direct 12-game matches, and Figure~\ref{fig:scratch} shows the main 8$\times$8 scratch
+comparison.
 
 \begin{table}[t]
 \centering
@@ -171,8 +170,8 @@ GNN 6$\times$6 fine-tune (cosine, progressive) & 30 & 1.00 @ iter 20 & 0.92 @ it
 GNN 8$\times$8 fine-tune (cosine, progressive) & 30 & 0.92 @ iter 5 & 0.58 @ iter 30 \\
 \bottomrule
 \end{tabular}
-\caption{Win rates are measured against the greedy evaluator over 12 games. The cosine-scheduled
-and progressive-transfer runs are included because they materially change the transfer story.}
+\caption{Win rates against the greedy evaluator over 12 games. Cosine and progressive-transfer runs
+are included because they change the transfer outcome.}
 \label{tab:results}
 \end{table}
 
@@ -189,9 +188,8 @@ Direct 5$\times$5$\rightarrow$8$\times$8 transfer (cosine) & 4 & 8 & 0.33 \\
 Progressive 5$\times$5$\rightarrow$6$\times$6$\rightarrow$8$\times$8 transfer (cosine) & 5 & 7 & 0.42 \\
 \bottomrule
 \end{tabular}
-\caption{Direct 12-game head-to-head matches against the final CNN 8$\times$8 scratch checkpoint.
-These results are more variable than the greedy-evaluator curves because each estimate is based on
-only 12 games, but they show how much each GNN variant narrows the final gap to the CNN.}
+\caption{Direct 12-game matches against the final CNN 8$\times$8 scratch checkpoint. Despite the
+small sample, they show how much each GNN variant narrows the final gap.}
 \label{tab:head_to_head}
 \end{table}
 
