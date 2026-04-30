@@ -36,7 +36,7 @@
 
 We study whether a board-size-invariant graph encoder improves self-play learning and cross-board transfer in Breakthrough.
 Using an AlphaZero-style training loop, we compare a graph neural network (GNN) with a convolutional neural network (CNN) on 8$\times$8 play and in 5$\times$5$\rightarrow$8$\times$8 transfer.
-Under our training budget, the CNN reaches a 100\% greedy-evaluation win rate by iteration 40, while the GNN plateaus near 42\% with high variance.
+Under our training budget, the CNN reaches a 100\% greedy-evaluation win rate by iteration 40, while the GNN plateaus near 42\%.
 Pretraining on 5$\times$5 improves early 8$\times$8 performance from 17\% to 67\% at iteration 5, but does not remove the CNN's long-run advantage.
 In a direct 12-game match, the CNN defeats the GNN 7 games to 5.
 \end{abstract}
@@ -49,16 +49,12 @@ Despite its simple rules, the game is strategically rich and has a large state s
 Figure~\ref{fig:rules} illustrates the starting position and the legal forward and diagonal-capture moves that define the game.
 
 Breakthrough is a useful testbed for representation learning because strong play depends on local,
-directional structure, making the game a natural candidate for graph-based encodings rather than
-purely image-like grid representations. It is also attractive for transfer experiments because the
-same local move rules apply across board sizes.
-
-We study two questions: whether an AlphaGateau-style graph neural network (GNN) can outperform a
-simpler convolutional neural network (CNN) on 8$\times$8 Breakthrough under a fixed self-play
-budget, and whether the GNN's board-size-invariant representation makes
-5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful. Under our training budget, the CNN is
-stronger from scratch, while 5$\times$5 pretraining gives the GNN a clear early transfer benefit
-without closing the full gap.
+directional structure and the same move rules apply across board sizes.
+We study whether an AlphaGateau-style graph neural network (GNN) can outperform a simpler
+convolutional neural network (CNN) on 8$\times$8 Breakthrough, and whether its
+board-size-invariant representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer
+meaningful. Under our training budget, the CNN is stronger from scratch, while 5$\times$5
+pretraining gives the GNN a clear early transfer benefit without closing the full gap.
 
 \begin{figure}[t]
   \centering
@@ -84,15 +80,9 @@ Prior work on Breakthrough has focused primarily on exact game solving rather th
 learning~\cite{saffidine2011breakthrough,jonsson2025solving}. We defer those details to
 Appendix~\ref{app:background} because our focus is representation learning and transfer rather
 than solving methodology.
-
-Those exact-solving systems aim to prove the game-theoretic value of positions.
-Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study whether learned policy/value models can play effectively under self-play.
-In particular, we care about representation quality and cross-board transfer rather than formal game-theory optimality.
-
-Breakthrough~\cite{breakthrough} is especially attractive for this representation question because the same local move rules apply on both 5$\times$5 and 8$\times$8 boards.
-A fixed-size CNN processes an 8$\times$8 grid directly but does not naturally reuse the same architecture across board sizes.
-By contrast, a graph encoder can preserve the same feature schema while changing only the number of nodes and edges.
-This makes Breakthrough a clean testbed for our two questions: whether a GNN is competitive with a CNN under the same RL budget, and whether a board-size-invariant graph representation makes 5$\times$5~$\rightarrow$~8$\times$8 transfer meaningful.
+Our setting is different: we do not attempt to solve Breakthrough exactly, but instead study
+whether learned policy/value models can play effectively under self-play and transfer across board
+sizes.
 
 
 
@@ -123,18 +113,15 @@ Self-play training uses 32 MCTS simulations per move, a 50k-sample replay buffer
 Unless otherwise noted, the learning rate is $10^{-3}$.
 
 \paragraph{Experiment configurations.}
-We ran four groups of experiments.
+We ran three main experiment groups.
 First, in the 8$\times$8 scratch comparison, the CNN and GNN were trained from scratch for
 40 iterations\footnote{We used 40 iterations as the standard budget because of our single-GPU compute constraints.}
 with 64 self-play games per iteration and a 192-ply move cap.
 Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterations using
 128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{We used 30 fine-tuning iterations to measure early 8$\times$8 transfer gains rather than fully optimize the transferred model.}
-Third, we repeated selected GNN runs with cosine decay in place of a fixed learning rate to study
-whether a learning-rate schedule improved optimization.
-Fourth, we also evaluated a value-only TD($\lambda$) baseline; detailed setup and results are
-deferred to Appendix~\ref{app:tdlambda}.
-We also explored a progressive transfer pipeline of 5$\times$5 to 6$\times$6 to 8$\times$8 as an
-additional transfer ablation to bridge board sizes.
+Third, we repeated selected GNN runs with cosine decay and explored a progressive
+5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 transfer ablation. We also
+evaluated a value-only TD($\lambda$) baseline, deferred to Appendix~\ref{app:tdlambda}.
 
 \paragraph{Evaluation protocol.}
 Every five iterations we play 12 games against a greedy evaluator and record the win rate.
@@ -149,8 +136,7 @@ stagewise transfer rather than catastrophic forgetting.
 \section{Results}
 
 Table~\ref{tab:results} summarises the main training runs, Table~\ref{tab:head_to_head} reports
-the direct 12-game matches, and Figure~\ref{fig:scratch} shows the main 8$\times$8 scratch
-comparison.
+the direct 12-game matches, and Figure~\ref{fig:scratch} shows the 8$\times$8 scratch comparison.
 
 \begin{table}[t]
 \centering
