@@ -16,6 +16,58 @@ INCLUDE_PATHS = [
     REPO_ROOT / "scripts",
     REPO_ROOT / "slurm",
 ]
+OPTIONAL_INCLUDE_PATHS = [
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "cnn_8x8_scratch" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "cnn_8x8_scratch" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "cnn_8x8_scratch" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "cnn_8x8_scratch" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch_cosine" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch_cosine" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch_cosine" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch_cosine" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine_cat_forg" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine_cat_forg" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine_cat_forg" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain_cosine_cat_forg" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_6x6_finetune_cosine_cat_forg" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_6x6_finetune_cosine_cat_forg" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_6x6_finetune_cosine_cat_forg" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_6x6_finetune_cosine_cat_forg" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine_cat_forg" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine_cat_forg" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine_cat_forg" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_finetune_cosine_cat_forg" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "td_5x5_scratch" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "td_5x5_scratch" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "td_5x5_scratch" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "td_5x5_scratch" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "td_8x8_scratch" / "config.json",
+    REPO_ROOT / "artifacts" / "experiments" / "td_8x8_scratch" / "evaluation.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "td_8x8_scratch" / "metrics.csv",
+    REPO_ROOT / "artifacts" / "experiments" / "td_8x8_scratch" / "summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_transfer_summary.json",
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_transfer_zero_shot.json",
+    REPO_ROOT / "artifacts" / "experiments" / "head_to_head_gnn_5x5_6x6_8x8_finetune_cosine_vs_cnn.json",
+    REPO_ROOT / "artifacts" / "experiments" / "head_to_head_gnn_5x5_to_8x8_vs_cnn.json",
+    REPO_ROOT / "artifacts" / "experiments" / "head_to_head_gnn_cosine_vs_cnn.json",
+    REPO_ROOT / "report" / "figures" / "breakthrough_rules.png",
+    REPO_ROOT / "report" / "figures" / "encoding_visualisation.png",
+    REPO_ROOT / "report" / "figures" / "gnn_8x8_scratch_curve.png",
+    REPO_ROOT / "report" / "figures" / "transfer_curve.png",
+    REPO_ROOT / "report" / "figures" / "gnn_5x5_6x6_8x8_progressive_winrate.png",
+]
 EXCLUDED_DIR_NAMES = {
     "__pycache__",
     ".git",
@@ -67,6 +119,8 @@ def ensure_required_paths_exist(paths: list[Path]) -> None:
 
 def should_include(path: Path) -> bool:
     relative = path.relative_to(REPO_ROOT)
+    if path in OPTIONAL_INCLUDE_PATHS:
+        return path.is_file()
     if relative in EXCLUDED_RELATIVE_PATHS:
         return False
     if any(part in EXCLUDED_DIR_NAMES for part in relative.parts[:-1]):
@@ -108,7 +162,7 @@ def write_zip(output_path: Path, files: list[Path]) -> None:
 
 def main() -> None:
     ensure_required_paths_exist(INCLUDE_PATHS)
-    files = iter_bundle_files(INCLUDE_PATHS)
+    files = iter_bundle_files(INCLUDE_PATHS + [path for path in OPTIONAL_INCLUDE_PATHS if path.exists()])
     write_zip(OUTPUT_PATH, files)
     size_bytes = OUTPUT_PATH.stat().st_size
     print(
