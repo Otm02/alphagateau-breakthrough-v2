@@ -1,12 +1,9 @@
-from __future__ import annotations
-
 import csv
 import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 
 BOARD_LIGHT = "#f3e7c9"
 BOARD_DARK = "#b08a5a"
@@ -52,11 +49,7 @@ def _read_greedy_eval_points(run_dir: str | Path) -> tuple[list[int], list[float
             )
 
     rows = _read_metrics(run_dir)
-    filtered = [
-        row
-        for row in rows
-        if row.get("greedy_win_rate") not in (None, "")
-    ]
+    filtered = [row for row in rows if row.get("greedy_win_rate") not in (None, "")]
     return (
         [int(row["iteration"]) for row in filtered],
         [float(row["greedy_win_rate"]) for row in filtered],
@@ -179,24 +172,43 @@ def plot_scratch_comparison(
     cnn_policy_loss = [float(row["policy_loss"]) for row in cnn_metrics]
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    axes[0].plot(gnn_eval_x, gnn_eval_y, marker="o", color="#1f77b4", label="GNN scratch")
-    axes[0].plot(gnn_cosine_eval_x, gnn_cosine_eval_y, marker="d", color="#42b41f", label="GNN cosine decay scratch")
-    axes[0].plot(cnn_eval_x, cnn_eval_y, marker="s", color="#ff7f0e", label="CNN scratch")
+    axes[0].plot(
+        gnn_eval_x, gnn_eval_y, marker="o", color="#1f77b4", label="GNN scratch"
+    )
+    axes[0].plot(
+        gnn_cosine_eval_x,
+        gnn_cosine_eval_y,
+        marker="d",
+        color="#42b41f",
+        label="GNN cosine decay scratch",
+    )
+    axes[0].plot(
+        cnn_eval_x, cnn_eval_y, marker="s", color="#ff7f0e", label="CNN scratch"
+    )
     axes[0].set_title("8x8 Scratch Evaluation")
     axes[0].set_xlabel("Iteration")
     axes[0].set_ylabel("Win rate vs greedy")
     axes[0].set_ylim(0.0, 1.0)
-    _format_iteration_axis(axes[0], sorted(set(gnn_eval_x + gnn_cosine_eval_x + cnn_eval_x)))
+    _format_iteration_axis(
+        axes[0], sorted(set(gnn_eval_x + gnn_cosine_eval_x + cnn_eval_x))
+    )
     axes[0].grid(alpha=0.3)
     axes[0].legend()
 
     axes[1].plot(gnn_loss_x, gnn_policy_loss, color="#1f77b4", label="GNN policy loss")
-    axes[1].plot(gnn_cosine_loss_x, gnn_cosine_policy_loss, color="#42b41f", label="GNN cosine decay policy loss")
+    axes[1].plot(
+        gnn_cosine_loss_x,
+        gnn_cosine_policy_loss,
+        color="#42b41f",
+        label="GNN cosine decay policy loss",
+    )
     axes[1].plot(cnn_loss_x, cnn_policy_loss, color="#ff7f0e", label="CNN policy loss")
     axes[1].set_title("8x8 Scratch Training")
     axes[1].set_xlabel("Iteration")
     axes[1].set_ylabel("Policy loss")
-    _format_iteration_axis(axes[1], sorted(set(gnn_loss_x + gnn_cosine_loss_x + cnn_loss_x)))
+    _format_iteration_axis(
+        axes[1], sorted(set(gnn_loss_x + gnn_cosine_loss_x + cnn_loss_x))
+    )
     axes[1].grid(alpha=0.3)
     axes[1].legend()
 
@@ -206,7 +218,9 @@ def plot_scratch_comparison(
     plt.close(fig)
 
 
-def plot_learning_curve(run_dir: str | Path, output_path: str | Path, title: str) -> None:
+def plot_learning_curve(
+    run_dir: str | Path, output_path: str | Path, title: str
+) -> None:
     rows = _read_metrics(run_dir)
     if not rows:
         raise ValueError(f"No metrics found in {run_dir}.")
@@ -255,10 +269,14 @@ def plot_transfer_curve(
         scratch_x, scratch_y = _read_greedy_eval_points(gnn_scratch_dir)
         if fin_x:
             max_iter = max(fin_x)
-            scratch_x, scratch_y = zip(
-                *[(x, y) for x, y in zip(scratch_x, scratch_y) if x <= max_iter],
-                strict=False,
-            ) if any(x <= max_iter for x in scratch_x) else ([], [])
+            scratch_x, scratch_y = (
+                zip(
+                    *[(x, y) for x, y in zip(scratch_x, scratch_y) if x <= max_iter],
+                    strict=False,
+                )
+                if any(x <= max_iter for x in scratch_x)
+                else ([], [])
+            )
             scratch_x = list(scratch_x)
             scratch_y = list(scratch_y)
 
@@ -272,11 +290,20 @@ def plot_transfer_curve(
     axes[0].grid(alpha=0.3)
 
     if zero_shot is not None:
-        axes[1].scatter([0], [zero_shot], color="#111111", s=60, zorder=5, label="Zero-shot 8x8")
+        axes[1].scatter(
+            [0], [zero_shot], color="#111111", s=60, zorder=5, label="Zero-shot 8x8"
+        )
     if fin_x:
         axes[1].plot(fin_x, fin_y, marker="o", color="#1f77b4", label="GNN fine-tune")
     if scratch_x:
-        axes[1].plot(scratch_x, scratch_y, marker="s", color="#2ca02c", linestyle="--", label="GNN scratch")
+        axes[1].plot(
+            scratch_x,
+            scratch_y,
+            marker="s",
+            color="#2ca02c",
+            linestyle="--",
+            label="GNN scratch",
+        )
     axes[1].set_title("Transfer To 8x8")
     axes[1].set_xlabel("Iteration")
     axes[1].set_ylabel("Win rate vs greedy")

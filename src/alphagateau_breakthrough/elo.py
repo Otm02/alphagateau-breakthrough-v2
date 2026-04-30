@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from collections import defaultdict
 
 import numpy as np
@@ -17,7 +15,9 @@ def _score_from_results(results: tuple[int, int, int] | list[int]) -> float:
     return (wins - losses) / max(1, wins + draws + losses)
 
 
-def compute_wls_elo(results: dict[str, dict[str, list[int]]], average: int = 1000) -> tuple[dict[str, int], dict[str, float]]:
+def compute_wls_elo(
+    results: dict[str, dict[str, list[int]]], average: int = 1000
+) -> tuple[dict[str, int], dict[str, float]]:
     players = sorted(results.keys())
     if not players:
         return {}, {}
@@ -31,7 +31,9 @@ def compute_wls_elo(results: dict[str, dict[str, list[int]]], average: int = 100
                 continue
             score = _score_from_results(outcome)
             p_bar = np.clip((score + 1.0) / 2.0, 1e-4, 1.0 - 1e-4)
-            rows.append(_match_row(player_to_id[player_a], player_to_id[player_b], len(players)))
+            rows.append(
+                _match_row(player_to_id[player_a], player_to_id[player_b], len(players))
+            )
             targets.append(-(400.0 / np.log(10.0)) * np.log(1.0 / p_bar - 1.0))
             n_games = max(1, sum(outcome))
             weights.append(n_games * p_bar * (1.0 - p_bar))

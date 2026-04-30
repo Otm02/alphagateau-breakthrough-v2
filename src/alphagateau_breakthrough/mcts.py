@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from functools import partial
 from typing import NamedTuple
 
@@ -105,7 +103,9 @@ def selfplay(
     state = jax.vmap(env.init)(keys[:n_games])
     rollout_keys = keys[n_games:]
 
-    def body_fn(carry: BreakthroughState, key: chex.PRNGKey) -> tuple[BreakthroughState, SelfPlayBatch]:
+    def body_fn(
+        carry: BreakthroughState, key: chex.PRNGKey
+    ) -> tuple[BreakthroughState, SelfPlayBatch]:
         key_policy, key_reset = jax.random.split(key)
         policy = gumbel_policy(
             state=carry,

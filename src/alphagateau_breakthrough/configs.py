@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import asdict, dataclass
 
 
@@ -11,9 +9,9 @@ class TrainConfig:
     hidden_size: int = 64
     n_res_layers: int = 4
     learning_rate: float = 1e-3
-    lr_schedule: str = "constant"   # "constant", "cosine", "step"
+    lr_schedule: str = "constant"  # "constant", "cosine", "step"
     lr_warmup_steps: int = 0
-    lr_decay_factor: float = 0.1    # only when lr_schedule is "step"
+    lr_decay_factor: float = 0.1  # only when lr_schedule is "step"
     num_iterations: int = 40
     selfplay_games: int = 64
     max_plies: int = 256
@@ -96,7 +94,7 @@ EXPERIMENT_PRESETS = {
         selfplay_games=64,
         max_plies=256,
         num_iterations=30,
-        lr_schedule="cosine", 
+        lr_schedule="cosine",
     ),
     "gnn_6x6_finetune": TrainConfig(
         experiment_name="gnn_6x6_finetune",
@@ -113,10 +111,10 @@ EXPERIMENT_PRESETS = {
         selfplay_games=64,
         max_plies=256,
         num_iterations=30,
-        lr_schedule="cosine", 
+        lr_schedule="cosine",
     ),
-    
 }
+
 
 @dataclass
 class TDTrainConfig:
@@ -142,6 +140,7 @@ class TDTrainConfig:
     def to_dict(self) -> dict:
         return asdict(self)
 
+
 TD_PRESETS = {
     "td_5x5_scratch": TDTrainConfig(
         model_type="td",
@@ -158,8 +157,8 @@ TD_PRESETS = {
         experiment_name="td_8x8_scratch",
         board_size=8,
         seed=42,
-        max_plies=256,        
+        max_plies=256,
         discount_factor=0.99,
         lambda_=0.7,
-    )
+    ),
 }

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import csv
 import json
 from dataclasses import asdict, is_dataclass
@@ -63,7 +61,9 @@ def write_csv(path: str | Path, rows: list[dict[str, Any]]) -> None:
         writer.writerows(rows)
 
 
-def broadcast_where(mask: jnp.ndarray, left: jnp.ndarray, right: jnp.ndarray) -> jnp.ndarray:
+def broadcast_where(
+    mask: jnp.ndarray, left: jnp.ndarray, right: jnp.ndarray
+) -> jnp.ndarray:
     while mask.ndim < left.ndim:
         mask = mask[..., None]
     return jnp.where(mask, left, right)
@@ -73,11 +73,17 @@ def tree_select(mask: jnp.ndarray, left: Any, right: Any) -> Any:
     return jax.tree.map(lambda x, y: broadcast_where(mask, x, y), left, right)
 
 
-def action_string(board: jnp.ndarray, player: jnp.ndarray, action: jnp.ndarray, board_size: int) -> str:
-    from_row, from_col, to_row, to_col, capture = action_to_notation(board, player, action, board_size)
+def action_string(
+    board: jnp.ndarray, player: jnp.ndarray, action: jnp.ndarray, board_size: int
+) -> str:
+    from_row, from_col, to_row, to_col, capture = action_to_notation(
+        board, player, action, board_size
+    )
 
     def square(row: int, col: int) -> str:
         return f"{chr(ord('a') + col)}{row + 1}"
 
     sep = "x" if bool(capture) else "-"
-    return f"{square(int(from_row), int(from_col))}{sep}{square(int(to_row), int(to_col))}"
+    return (
+        f"{square(int(from_row), int(from_col))}{sep}{square(int(to_row), int(to_col))}"
+    )

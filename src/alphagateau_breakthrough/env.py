@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 from functools import partial
 
 import jax
 import jax.numpy as jnp
 from flax import struct
-
 
 FORWARD = 0
 DIAG_LEFT = 1
@@ -54,12 +51,7 @@ def _legal_action_mask_from_canonical(board: jnp.ndarray) -> jnp.ndarray:
     def move_mask(delta_col: jnp.ndarray) -> jnp.ndarray:
         to_rows = rows + 1
         to_cols = cols + delta_col
-        on_board = (
-            (to_rows >= 0)
-            & (to_rows < size)
-            & (to_cols >= 0)
-            & (to_cols < size)
-        )
+        on_board = (to_rows >= 0) & (to_rows < size) & (to_cols >= 0) & (to_cols < size)
         safe_rows = jnp.clip(to_rows, 0, size - 1)
         safe_cols = jnp.clip(to_cols, 0, size - 1)
         target = board[safe_rows, safe_cols]
@@ -71,7 +63,9 @@ def _legal_action_mask_from_canonical(board: jnp.ndarray) -> jnp.ndarray:
     return mask.reshape(-1)
 
 
-def _action_to_canonical_coords(action: jnp.ndarray, size: int) -> tuple[jnp.ndarray, ...]:
+def _action_to_canonical_coords(
+    action: jnp.ndarray, size: int
+) -> tuple[jnp.ndarray, ...]:
     from_square = action // 3
     move_type = action % 3
     from_row = from_square // size
@@ -87,11 +81,15 @@ def encode_action(from_row: int, from_col: int, move_type: int, board_size: int)
 
 def decode_action(action: int, board_size: int) -> tuple[int, int, int, int, int]:
     action_jnp = jnp.int32(action)
-    from_row, from_col, to_row, to_col, move_type = _action_to_canonical_coords(action_jnp, board_size)
+    from_row, from_col, to_row, to_col, move_type = _action_to_canonical_coords(
+        action_jnp, board_size
+    )
     return int(from_row), int(from_col), int(to_row), int(to_col), int(move_type)
 
 
-def _canonical_to_absolute(row: jnp.ndarray, col: jnp.ndarray, size: int, player: jnp.ndarray) -> tuple[jnp.ndarray, jnp.ndarray]:
+def _canonical_to_absolute(
+    row: jnp.ndarray, col: jnp.ndarray, size: int, player: jnp.ndarray
+) -> tuple[jnp.ndarray, jnp.ndarray]:
     abs_row = jnp.where(player == 0, row, size - 1 - row)
     abs_col = jnp.where(player == 0, col, size - 1 - col)
     return abs_row, abs_col
@@ -124,7 +122,9 @@ class BreakthroughEnv:
         board_current = canonical_board(board, current_player)
         observation = observation_from_canonical(board_current)
         legal_action_mask = _legal_action_mask_from_canonical(board_current)
-        legal_action_mask = jnp.where(terminated, jnp.zeros_like(legal_action_mask), legal_action_mask)
+        legal_action_mask = jnp.where(
+            terminated, jnp.zeros_like(legal_action_mask), legal_action_mask
+        )
         return BreakthroughState(
             _board=board,
             observation=observation,
@@ -167,11 +167,19 @@ class BreakthroughEnv:
             turn_count=state.turn_count + 1,
         )
 
-    def _step_legal(self, state: BreakthroughState, action: jnp.ndarray) -> BreakthroughState:
+    def _step_legal(
+        self, state: BreakthroughState, action: jnp.ndarray
+    ) -> BreakthroughState:
         size = self.board_size
-        from_row, from_col, to_row, to_col, _ = _action_to_canonical_coords(action, size)
-        abs_from_row, abs_from_col = _canonical_to_absolute(from_row, from_col, size, state.current_player)
-        abs_to_row, abs_to_col = _canonical_to_absolute(to_row, to_col, size, state.current_player)
+        from_row, from_col, to_row, to_col, _ = _action_to_canonical_coords(
+            action, size
+        )
+        abs_from_row, abs_from_col = _canonical_to_absolute(
+            from_row, from_col, size, state.current_player
+        )
+        abs_to_row, abs_to_col = _canonical_to_absolute(
+            to_row, to_col, size, state.current_player
+        )
         moving_piece = jnp.where(state.current_player == 0, jnp.int8(1), jnp.int8(-1))
         board = state._board
         board = board.at[abs_from_row, abs_from_col].set(0)
@@ -226,8 +234,12 @@ def action_to_notation(
     action: jnp.ndarray,
     board_size: int,
 ) -> tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray]:
-    from_row, from_col, to_row, to_col, move_type = _action_to_canonical_coords(action, board_size)
-    abs_from_row, abs_from_col = _canonical_to_absolute(from_row, from_col, board_size, player)
+    from_row, from_col, to_row, to_col, move_type = _action_to_canonical_coords(
+        action, board_size
+    )
+    abs_from_row, abs_from_col = _canonical_to_absolute(
+        from_row, from_col, board_size, player
+    )
     abs_to_row, abs_to_col = _canonical_to_absolute(to_row, to_col, board_size, player)
     capture = board[abs_to_row, abs_to_col] != 0
     del move_type
