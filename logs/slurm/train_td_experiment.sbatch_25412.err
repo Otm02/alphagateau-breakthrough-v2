@@ -1,0 +1,29 @@
+Loaded cuda module: cuda/cuda-12.6
+/usr/local/pkgs/anaconda/lib/python3.9/site-packages/conda/base/context.py:202: FutureWarning: Adding 'defaults' to channel list implicitly is deprecated and will be removed in 25.3. 
+
+To remove this warning, please choose a default channel explicitly with conda's regular configuration system, e.g. by adding 'defaults' to the list of channels:
+
+  conda config --add channels defaults
+
+For more information see https://docs.conda.io/projects/conda/en/stable/user-guide/configuration/use-condarc.html
+
+  deprecated.topic(
+E0427 17:13:32.868765 2963828 slow_operation_alarm.cc:73] 
+********************************
+[Compiling module jit_cond for GPU] Very slow compile? If you want to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+********************************
+E0427 17:24:19.186256 2963791 slow_operation_alarm.cc:140] The operation took 12m46.317835353s
+
+********************************
+[Compiling module jit_cond for GPU] Very slow compile? If you want to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+********************************
+E0427 17:56:27.978369 2963828 slow_operation_alarm.cc:73] 
+********************************
+[Compiling module jit_cond for GPU] Very slow compile? If you want to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+********************************
+E0427 18:06:12.079002 2963791 slow_operation_alarm.cc:140] The operation took 11m44.100981664s
+
+********************************
+[Compiling module jit_cond for GPU] Very slow compile? If you want to file a bug, run with envvar XLA_FLAGS=--xla_dump_to=/tmp/foo and attach the results.
+********************************
+slurmstepd: error: *** JOB 25412 ON gpu-grad-01 CANCELLED AT 2026-04-27T18:32:45 ***

@@ -1,0 +1,1 @@
+Running: python scripts/train_experiment.py gnn_5x5_pretrain_cosine --output-root artifacts/experiments --run-name gnn_5x5_pretrain_cosine --resume

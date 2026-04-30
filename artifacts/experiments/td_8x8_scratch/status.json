@@ -1,0 +1,15 @@
+{
+  "experiment_name": "td_8x8_scratch",
+  "run_name": "td_8x8_scratch",
+  "board_size": 8,
+  "model_type": "td",
+  "target_iterations": 40,
+  "completed_iterations": 40,
+  "remaining_iterations": 0,
+  "status": "completed",
+  "is_complete": true,
+  "interrupt_signal": null,
+  "latest_checkpoint": "artifacts/experiments/td_8x8_scratch/checkpoints/final.pkl",
+  "final_checkpoint": "artifacts/experiments/td_8x8_scratch/checkpoints/final.pkl",
+  "resume_state": "artifacts/experiments/td_8x8_scratch/latest_resume.pkl"
+}

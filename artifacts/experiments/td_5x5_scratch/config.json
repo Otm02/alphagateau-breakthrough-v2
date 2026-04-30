@@ -1,0 +1,20 @@
+{
+  "experiment_name": "td_5x5_scratch",
+  "board_size": 5,
+  "model_type": "td",
+  "hidden_size": 64,
+  "n_res_layers": 4,
+  "learning_rate": 0.001,
+  "discount_factor": 0.99,
+  "num_iterations": 40,
+  "episodes_per_iteration": 128,
+  "lambda_": 0.7,
+  "eval_interval": 5,
+  "checkpoint_interval": 5,
+  "eval_games": 12,
+  "seed": 42,
+  "initial_checkpoint": null,
+  "max_plies": 96,
+  "training_passes": 1,
+  "exploration_epsilon": 0.3
+}

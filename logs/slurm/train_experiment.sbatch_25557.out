@@ -1,0 +1,1 @@
+Running: python scripts/train_experiment.py cnn_8x8_scratch --output-root artifacts/experiments --run-name cnn_8x8_scratch --resume

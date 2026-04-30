@@ -1,0 +1,2 @@
+Running: python scripts/train_td_experiment.py td_5x5_scratch --output-root artifacts/experiments --run-name td_5x5_scratch --resume
+Training td_5x5_scratch                                         0%  0/40 0:00:00

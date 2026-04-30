@@ -1,0 +1,29 @@
+{
+  "experiment_name": "cnn_8x8_scratch",
+  "run_name": "cnn_8x8_scratch",
+  "board_size": 8,
+  "model_type": "cnn",
+  "final_checkpoint": "/mnt/teaching/slurm/abenar4/artifacts/experiments/cnn_8x8_scratch/checkpoints/final.pkl",
+  "final_iteration": 40,
+  "target_iterations": 40,
+  "status": "completed",
+  "resume_state": "/mnt/teaching/slurm/abenar4/artifacts/experiments/cnn_8x8_scratch/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 40,
+    "replay_size": 50000,
+    "policy_loss": 1.9740946408881115,
+    "value_loss": 0.1557798401372705,
+    "greedy_win_rate": 1.0,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 0.0
+  },
+  "latest_eval": {
+    "iteration": 40,
+    "wins": 12,
+    "draws": 0,
+    "losses": 0,
+    "win_rate": 1.0,
+    "draw_rate": 0.0,
+    "loss_rate": 0.0
+  }
+}

@@ -1,0 +1,6 @@
+a2-a3
+b4xa3
+b1-a2
+a3xb2
+a2-a3
+b2xc1

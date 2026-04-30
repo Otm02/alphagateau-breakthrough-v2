@@ -1,0 +1,28 @@
+{
+  "experiment_name": "td_5x5_scratch",
+  "run_name": "td_5x5_scratch",
+  "board_size": 5,
+  "model_type": "td",
+  "final_checkpoint": "artifacts/experiments/td_5x5_scratch/checkpoints/final.pkl",
+  "final_iteration": 40,
+  "target_iterations": 40,
+  "status": "completed",
+  "resume_state": "artifacts/experiments/td_5x5_scratch/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 40,
+    "n_transitions": 1683,
+    "value_loss": 0.14620627462863922,
+    "greedy_win_rate": 0.0,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 1.0
+  },
+  "latest_eval": {
+    "iteration": 40,
+    "wins": 0,
+    "draws": 0,
+    "losses": 12,
+    "win_rate": 0.0,
+    "draw_rate": 0.0,
+    "loss_rate": 1.0
+  }
+}

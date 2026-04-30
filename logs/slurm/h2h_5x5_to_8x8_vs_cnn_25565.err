@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/evaluate_models.py", line 35, in <module>
+    main()
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/scripts/evaluate_models.py", line 22, in main
+    summary = evaluate_checkpoint_pair(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/evaluation.py", line 248, in evaluate_checkpoint_pair
+    payload_b = load_checkpoint(checkpoint_b)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/alphagateau-breakthrough-v2/src/alphagateau_breakthrough/models.py", line 400, in load_checkpoint
+    with Path(path).open("rb") as file:
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/2025/asaffa4/envs/comp579-breakthrough/lib/python3.11/pathlib.py", line 1044, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/2025/asaffa4/alphagateau-breakthrough-v2/artifacts/experiments/\ncnn_8x8_scratch/checkpoints/final.pkl'

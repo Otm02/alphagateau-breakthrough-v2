@@ -1,0 +1,6 @@
+e2-e3
+d4xe3
+b2-c3
+e3xd2
+c3-d4
+d2xe1

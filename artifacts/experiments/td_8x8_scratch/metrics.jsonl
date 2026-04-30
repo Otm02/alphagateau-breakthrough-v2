@@ -1,0 +1,40 @@
+{"iteration": 1, "n_transitions": 3127, "value_loss": 0.06781160086393356}
+{"iteration": 2, "n_transitions": 3861, "value_loss": 1.0542900562286377}
+{"iteration": 3, "n_transitions": 7182, "value_loss": 1.0371873378753662}
+{"iteration": 4, "n_transitions": 6949, "value_loss": 1.048169493675232}
+{"iteration": 5, "n_transitions": 7065, "value_loss": 1.0436476469039917, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 6, "n_transitions": 7100, "value_loss": 1.0583375692367554}
+{"iteration": 7, "n_transitions": 7077, "value_loss": 1.0478547811508179}
+{"iteration": 8, "n_transitions": 6962, "value_loss": 1.0717804431915283}
+{"iteration": 9, "n_transitions": 7005, "value_loss": 1.0523027181625366}
+{"iteration": 10, "n_transitions": 7050, "value_loss": 1.0627782344818115, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 11, "n_transitions": 7108, "value_loss": 1.0498855113983154}
+{"iteration": 12, "n_transitions": 6990, "value_loss": 1.0459266901016235}
+{"iteration": 13, "n_transitions": 7149, "value_loss": 1.0434964895248413}
+{"iteration": 14, "n_transitions": 7119, "value_loss": 1.060366153717041}
+{"iteration": 15, "n_transitions": 7171, "value_loss": 1.0601515769958496, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 16, "n_transitions": 7225, "value_loss": 1.0475047826766968}
+{"iteration": 17, "n_transitions": 7173, "value_loss": 1.0559709072113037}
+{"iteration": 18, "n_transitions": 7110, "value_loss": 1.0498802661895752}
+{"iteration": 19, "n_transitions": 7044, "value_loss": 1.0415617227554321}
+{"iteration": 20, "n_transitions": 7063, "value_loss": 1.0521260499954224, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 21, "n_transitions": 7052, "value_loss": 1.0542813539505005}
+{"iteration": 22, "n_transitions": 7211, "value_loss": 1.0516878366470337}
+{"iteration": 23, "n_transitions": 7055, "value_loss": 1.0563923120498657}
+{"iteration": 24, "n_transitions": 7111, "value_loss": 1.051981806755066}
+{"iteration": 25, "n_transitions": 7137, "value_loss": 1.051904559135437, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 26, "n_transitions": 7126, "value_loss": 1.0372376441955566}
+{"iteration": 27, "n_transitions": 7226, "value_loss": 1.0537152290344238}
+{"iteration": 28, "n_transitions": 7061, "value_loss": 1.0563706159591675}
+{"iteration": 29, "n_transitions": 7070, "value_loss": 1.037288784980774}
+{"iteration": 30, "n_transitions": 7203, "value_loss": 1.0517109632492065, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 31, "n_transitions": 7186, "value_loss": 1.0538429021835327}
+{"iteration": 32, "n_transitions": 7154, "value_loss": 1.0455793142318726}
+{"iteration": 33, "n_transitions": 7196, "value_loss": 1.0288567543029785}
+{"iteration": 34, "n_transitions": 7092, "value_loss": 1.0457087755203247}
+{"iteration": 35, "n_transitions": 7161, "value_loss": 1.064371943473816, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}
+{"iteration": 36, "n_transitions": 7108, "value_loss": 1.054095983505249}
+{"iteration": 37, "n_transitions": 7057, "value_loss": 1.0606260299682617}
+{"iteration": 38, "n_transitions": 7260, "value_loss": 1.0536078214645386}
+{"iteration": 39, "n_transitions": 7144, "value_loss": 1.0665464401245117}
+{"iteration": 40, "n_transitions": 7221, "value_loss": 1.0723819732666016, "greedy_win_rate": 0.0, "greedy_draw_rate": 0.0, "greedy_loss_rate": 1.0}

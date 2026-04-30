@@ -1,0 +1,29 @@
+{
+  "experiment_name": "gnn_5x5_pretrain_cosine",
+  "run_name": "gnn_5x5_pretrain_cosine",
+  "board_size": 5,
+  "model_type": "gnn",
+  "final_checkpoint": "artifacts/experiments/gnn_5x5_pretrain_cosine/checkpoints/final.pkl",
+  "final_iteration": 40,
+  "target_iterations": 40,
+  "status": "completed",
+  "resume_state": "artifacts/experiments/gnn_5x5_pretrain_cosine/latest_resume.pkl",
+  "final_metrics": {
+    "iteration": 40,
+    "replay_size": 50000,
+    "policy_loss": 0.997897625732666,
+    "value_loss": 0.32007207282641176,
+    "greedy_win_rate": 0.8333333333333334,
+    "greedy_draw_rate": 0.0,
+    "greedy_loss_rate": 0.16666666666666666
+  },
+  "latest_eval": {
+    "iteration": 40,
+    "wins": 10,
+    "draws": 0,
+    "losses": 2,
+    "win_rate": 0.8333333333333334,
+    "draw_rate": 0.0,
+    "loss_rate": 0.16666666666666666
+  }
+}
