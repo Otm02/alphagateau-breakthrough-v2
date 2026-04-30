@@ -338,6 +338,44 @@ wide margin. We attribute this to the evaluator's explicit lookahead: TD($\lambd
 that lookahead implicitly in its value function, while the AlphaZero-style agents obtain it
 directly through MCTS. Under the current compute budget, the results therefore support the need
 for search-guided policy learning rather than value-only self-play.
+
+\section{Additional Training Curves}
+\label{app:additional_curves}
+
+\paragraph{Scratch training curves.}
+Figure~\ref{fig:scratch} shows the full 8$\times$8 scratch comparison. The CNN overtakes the GNN
+around iteration 15 and then improves monotonically to 1.00 win rate, while the GNN peaks earlier
+and oscillates. The policy-loss panel is consistent with the main-text interpretation that the
+fixed-LR GNN is optimization-limited under the current budget.
+
+\paragraph{Progressive transfer curves.}
+Figure~\ref{fig:progressive_transfer} shows the full
+5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline. Transfer to the
+intermediate 6$\times$6 task is strong, but the benefit does not carry cleanly to the final
+8$\times$8 stage, which finishes below direct cosine transfer. Because we do not re-evaluate the
+final checkpoint on earlier board sizes, this figure should be read as stagewise transfer evidence
+rather than a direct measurement of catastrophic forgetting.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{gnn_8x8_scratch_curve.png}
+  \caption{8$\times$8 scratch comparison. \emph{Left}: greedy-evaluation win rate over training
+  iterations; the CNN (orange) overtakes the GNN (blue) at iteration 15 and reaches 1.00 by
+  iteration 40 while the GNN oscillates and plateaus. \emph{Right}: policy loss curves confirming
+  the GNN's convergence failure.}
+  \label{fig:scratch}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{gnn_5x5_6x6_8x8_progressive_winrate.png}
+  \caption{Progressive transfer pipeline across board sizes. Vertical dashed lines mark stage
+  boundaries and shaded bands indicate the active board size. The model adapts well to 6$\times$6
+  but does not retain that advantage through the final 8$\times$8 fine-tuning stage. Each
+  win-rate point is measured over 12 greedy-evaluation games.}
+  \label{fig:progressive_transfer}
+\end{figure}
+
 \section{Encoding Figure}
 
 \begin{figure}[t]
