@@ -180,13 +180,11 @@ small sample, they show how much each GNN variant narrows the final gap.}
 \end{table}
 
 \paragraph{Scratch comparison.}
-The CNN and GNN both start near zero win rate but diverge sharply after iteration 15. By iteration
-40, the CNN reaches 1.00 greedy-evaluation win rate while the scratch GNN finishes at 0.42
-(Table~\ref{tab:results}). A direct 12-game match between the final checkpoints confirms that gap:
-the CNN wins 10 games to 2 (Table~\ref{tab:head_to_head}). Figure~\ref{fig:scratch} shows the same
-pattern in training: the CNN improves steadily through iteration 40, while the GNN peaks earlier
-and then oscillates. The policy-loss panel supports the same interpretation, with the GNN
-plateauing near 2.05 while the CNN continues to improve.
+The CNN and GNN diverge sharply after iteration 15. By iteration 40, the CNN reaches 1.00
+greedy-evaluation win rate while the scratch GNN finishes at 0.42 (Table~\ref{tab:results}),
+and the CNN wins the final head-to-head 10 games to 2 (Table~\ref{tab:head_to_head}). Figure
+~\ref{fig:scratch} shows the same pattern: the CNN improves steadily while the GNN peaks earlier
+and plateaus.
 
 \paragraph{Transfer learning.}
 The 5$\times$5 pretrained GNN converges cleanly, reaching 1.00 win rate by iteration 20 and
@@ -194,30 +192,21 @@ maintaining it through iteration 40.
 Applied zero-shot to the 8$\times$8 board, it achieves only 17\% win rate (2/12 games), showing
 that the 5$\times$5 policy does not transfer directly to the larger board.
 
-Fine-tuning from the 5$\times$5 checkpoint, however, gives a substantial early-stage advantage
-(relative to scratch training on 8$\times$8).
-At iteration 5, the GNN pretrained on 5$\times$5 and then fine-tuned directly on 8$\times$8 with
-cosine decay wins 75\% of games versus a greedy evaluator, compared to only 17\% for the fixed-LR
-GNN trained from scratch at the same iteration.\footnote{more than a 4$\times$ improvement}
-This demonstrates that the board-size-invariant GNN representation does enable meaningful
-cross-board knowledge transfer.
+Fine-tuning from the 5$\times$5 checkpoint gives a substantial early-stage advantage. At iteration
+5, the GNN pretrained on 5$\times$5 and then fine-tuned directly on 8$\times$8 with cosine decay
+wins 75\% of games versus a greedy evaluator, compared to 17\% for the fixed-LR GNN trained from
+scratch at the same iteration.\footnote{more than a 4$\times$ improvement} This shows meaningful
+cross-board transfer.
 By iteration 30, this direct 5$\times$5~$\rightarrow$~8$\times$8 fine-tuning run reaches 83\%,
 while the fixed-LR scratch GNN at the same iteration is at 58\%, a persistent advantage.
 This is the strongest transfer run in Table~\ref{tab:results} by final greedy-evaluator win rate,
 so we use it as the main transfer result.
-The final transfer checkpoint still trails the final CNN checkpoint overall, but it exceeds the
-CNN's iteration-30 win rate of 75\%. In direct final-checkpoint play, it narrows the head-to-head
-gap from 2 wins in 12 games for the scratch GNN to 4 wins in 12 games against the same CNN
-(Table~\ref{tab:head_to_head}).
-
-\paragraph{Progressive transfer pipeline.}
-The stagewise 5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline helps on the
-intermediate 6$\times$6 task, but it does not improve the final 8$\times$8 result. The final
-progressive 8$\times$8 checkpoint ends at 0.58, below the 0.83 achieved by the GNN pretrained on
-5$\times$5 and then fine-tuned directly on 8$\times$8 with cosine decay. Yet in direct play
-against the final CNN checkpoint, the progressive model performs best in this small 12-game
-comparison, improving to 5 wins in 12 games (Table~\ref{tab:head_to_head}). Full
-curves and interpretation are deferred to Appendix~\ref{app:additional_curves}.
+The final transfer checkpoint still trails the final CNN checkpoint overall, but in direct
+final-checkpoint play it narrows the gap from 2 wins in 12 games for the scratch GNN to 4 wins in
+12 games against the same CNN (Table~\ref{tab:head_to_head}). A progressive
+5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline does not improve the final
+8$\times$8 greedy-evaluator result, so we treat it as a secondary ablation and defer its full
+curves to Appendix~\ref{app:additional_curves}.
 
 \begin{figure}[t]
   \centering
