@@ -154,8 +154,8 @@ interpreted as stagewise transfer rather than a direct measure of catastrophic f
 \section{Results}
 
 Table~\ref{tab:results} summarises the main scratch, transfer, cosine-scheduled, and progressive-transfer runs.
-Figure~\ref{fig:transfer} visualises the main transfer result, while the scratch and progressive
-transfer curves are deferred to Appendix~\ref{app:additional_curves}.
+Figure~\ref{fig:scratch} visualises the main 8$\times$8 scratch comparison, while the progressive
+transfer curve is deferred to Appendix~\ref{app:additional_curves}.
 
 \begin{table}[t]
 \centering
@@ -184,8 +184,10 @@ and progressive-transfer runs are included because they materially change the tr
 The CNN and GNN both start near zero win rate but diverge sharply after iteration 15. By iteration
 40, the CNN reaches 1.00 greedy-evaluation win rate while the scratch GNN finishes at 0.42
 (Table~\ref{tab:results}). A direct 12-game match between the final checkpoints confirms that gap:
-the CNN wins 10 games to 2. The full win-rate and policy-loss curves are shown in
-Appendix~\ref{app:additional_curves}.
+the CNN wins 10 games to 2. Figure~\ref{fig:scratch} shows the same pattern in training: the CNN
+improves steadily through iteration 40, while the GNN peaks earlier and then oscillates. The
+policy-loss panel supports the same interpretation, with the GNN plateauing near 2.05 while the
+CNN continues to improve.
 
 \paragraph{Transfer learning.}
 The 5$\times$5 pretrained GNN converges cleanly, reaching 1.00 win rate by iteration 20 and
@@ -194,7 +196,7 @@ Applied zero-shot to the 8$\times$8 board, it achieves only 17\% win rate (2/12 
 that the 5$\times$5 policy does not transfer directly to the larger board.
 
 Fine-tuning from the 5$\times$5 checkpoint, however, gives a substantial early-stage advantage
-(Figure~\ref{fig:transfer}, right panel).
+(relative to scratch training on 8$\times$8).
 At iteration 5, the cosine-scheduled fine-tuned model wins 75\% of games versus a greedy
 evaluator, compared to only 17\% for the fixed-LR GNN trained from scratch at the same
 iteration---more than a 4$\times$ improvement.
@@ -224,12 +226,12 @@ setup, results, and discussion are provided in Appendix~\ref{app:tdlambda}.
 
 \begin{figure}[t]
   \centering
-  \includegraphics[width=\linewidth]{transfer_curve.png}
-  \caption{Direct transfer from 5$\times$5 to 8$\times$8. \emph{Left}: the 5$\times$5 cosine-pretrained
-  GNN reaches perfect greedy-evaluation win rate by iteration 20. \emph{Right}: on 8$\times$8,
-  zero-shot transfer starts at only 0.17, but fine-tuning begins well above the scratch GNN and
-  finishes at 0.83 after 30 iterations.}
-  \label{fig:transfer}
+  \includegraphics[width=\linewidth]{gnn_8x8_scratch_curve.png}
+  \caption{8$\times$8 scratch comparison. \emph{Left}: greedy-evaluation win rate over training
+  iterations; the CNN (orange) overtakes the GNN (blue) at iteration 15 and reaches 1.00 by
+  iteration 40 while the GNN oscillates and plateaus. \emph{Right}: policy loss curves confirming
+  the GNN's convergence failure.}
+  \label{fig:scratch}
 \end{figure}
 
 \section{Discussion}
@@ -248,7 +250,7 @@ all spatial positions and efficiently capture the local, directional patterns th
 Breakthrough tactics.
 The GNN introduces additional parameters through attention pooling and edge feature MLPs, making
 it harder to optimize under a fixed 40-iteration budget with a single learning rate.
-The appendix scratch curves show the fixed-LR GNN policy loss plateauing near 2.05 while the CNN
+Figure~\ref{fig:scratch} shows the fixed-LR GNN policy loss plateauing near 2.05 while the CNN
 continues improving. We hypothesize that a larger iteration budget, decaying learning rates, or a
 simplified GNN variant without attention pooling could close part of this gap.
 
@@ -342,12 +344,6 @@ for search-guided policy learning rather than value-only self-play.
 \section{Additional Training Curves}
 \label{app:additional_curves}
 
-\paragraph{Scratch training curves.}
-Figure~\ref{fig:scratch} shows the full 8$\times$8 scratch comparison. The CNN overtakes the GNN
-around iteration 15 and then improves monotonically to 1.00 win rate, while the GNN peaks earlier
-and oscillates. The policy-loss panel is consistent with the main-text interpretation that the
-fixed-LR GNN is optimization-limited under the current budget.
-
 \paragraph{Progressive transfer curves.}
 Figure~\ref{fig:progressive_transfer} shows the full
 5$\times$5~$\rightarrow$~6$\times$6~$\rightarrow$~8$\times$8 pipeline. Transfer to the
@@ -355,16 +351,6 @@ intermediate 6$\times$6 task is strong, but the benefit does not carry cleanly t
 8$\times$8 stage, which finishes below direct cosine transfer. Because we do not re-evaluate the
 final checkpoint on earlier board sizes, this figure should be read as stagewise transfer evidence
 rather than a direct measurement of catastrophic forgetting.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{gnn_8x8_scratch_curve.png}
-  \caption{8$\times$8 scratch comparison. \emph{Left}: greedy-evaluation win rate over training
-  iterations; the CNN (orange) overtakes the GNN (blue) at iteration 15 and reaches 1.00 by
-  iteration 40 while the GNN oscillates and plateaus. \emph{Right}: policy loss curves confirming
-  the GNN's convergence failure.}
-  \label{fig:scratch}
-\end{figure}
 
 \begin{figure}[t]
   \centering
