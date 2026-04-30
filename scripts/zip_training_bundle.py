@@ -31,6 +31,28 @@ EXCLUDED_DIR_NAMES = {
 }
 EXCLUDED_FILE_NAMES = {".DS_Store"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
+EXCLUDED_RELATIVE_PATHS = {
+    Path("scripts/bootstrap_mimi_shell.sh"),
+    Path("scripts/evaluate_models.py"),
+    Path("scripts/mimi_bootstrap_shared_env.sh"),
+    Path("scripts/mimi_collect_outputs.sh"),
+    Path("scripts/mimi_dry_run.sh"),
+    Path("scripts/mimi_full_dag.sh"),
+    Path("scripts/mimi_full_validation.sh"),
+    Path("scripts/mimi_project.sh"),
+    Path("scripts/mimi_queue.sh"),
+    Path("scripts/mimi_runtime_check.sh"),
+    Path("scripts/mimi_smoke_dag.sh"),
+    Path("scripts/plot_catastrophic_forgetting.py"),
+    Path("scripts/plot_scratch_comparison.py"),
+    Path("scripts/plot_submission_figures.py"),
+    Path("scripts/postprocess_experiments.py"),
+    Path("scripts/run_smoke_suite.py"),
+    Path("scripts/setup_mimi_env.sh"),
+    Path("scripts/show_runtime_info.py"),
+    Path("scripts/submit_mimi_pipeline.py"),
+    Path("scripts/zip_training_bundle.py"),
+}
 
 
 def ensure_required_paths_exist(paths: list[Path]) -> None:
@@ -45,6 +67,8 @@ def ensure_required_paths_exist(paths: list[Path]) -> None:
 
 def should_include(path: Path) -> bool:
     relative = path.relative_to(REPO_ROOT)
+    if relative in EXCLUDED_RELATIVE_PATHS:
+        return False
     if any(part in EXCLUDED_DIR_NAMES for part in relative.parts[:-1]):
         return False
     if path.name in EXCLUDED_DIR_NAMES:
