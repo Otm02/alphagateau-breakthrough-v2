@@ -96,6 +96,8 @@ Actions use a fixed encoding $\texttt{action} = \texttt{from\_square} \times 3 +
 where \texttt{move\_type} $\in$ \{\texttt{forward}, \texttt{diag\_left}, \texttt{diag\_right}\}.
 We canonicalize the board so the player to move always advances upward, keeping both the tensor
 and graph interfaces board-size agnostic.
+By canonicalizing the perspective, the GNN's filters don't need to care about the absolute coordinates or the total size of the board.
+They only need to learn the local rule.
 
 \paragraph{Model representations.}
 The CNN baseline uses a three-channel tensor (self pieces, opponent pieces, empty squares) fed
@@ -117,8 +119,8 @@ Unless otherwise noted, the learning rate is $10^{-3}$.
 \paragraph{Experiment configurations.}
 We ran three main experiment groups.
 First, in the 8$\times$8 scratch comparison, the CNN and GNN were trained from scratch for
-40 iterations\footnote{We used 40 iterations as the standard budget because of our single-GPU compute constraints.}
-with 64 self-play games per iteration and a 192-ply move cap.
+40 iterations with 64 self-play games per iteration and a 192-ply move cap.
+We used 40 iterations as the standard budget because of our single-GPU compute constraints.
 Second, in the transfer setup, we pretrained the GNN on 5$\times$5 for 40 iterations using
 128 self-play games per iteration, then fine-tuned it on 8$\times$8 for 30 iterations.\footnote{We used 30 fine-tuning iterations to measure early 8$\times$8 transfer gains rather than fully optimize the transferred model.}
 Third, we repeated selected GNN runs with cosine decay and explored a progressive
@@ -135,6 +137,9 @@ fine-tuning.
 For the progressive transfer experiment, we evaluate each stage only on its current board size; we
 do not re-evaluate the final 8$\times$8 checkpoint on earlier boards, so these results reflect
 stagewise transfer rather than catastrophic forgetting.
+Because of compute constraints, this evaluation sample size is small. Consequently, exact win rate percentages and specific peaks are subject to high
+variance and should be interpreted as general performance trends rather than highly precise measurements.
+
 \section{Results}
 
 Table~\ref{tab:results} summarises the main training runs, Table~\ref{tab:head_to_head} reports
