@@ -17,6 +17,7 @@ INCLUDE_PATHS = [
     REPO_ROOT / "slurm",
 ]
 OPTIONAL_INCLUDE_PATHS = [
+    REPO_ROOT / "artifacts" / "experiments" / "gnn_5x5_pretrain",
     REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "config.json",
     REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "evaluation.csv",
     REPO_ROOT / "artifacts" / "experiments" / "gnn_8x8_scratch" / "metrics.csv",
@@ -120,6 +121,11 @@ def ensure_required_paths_exist(paths: list[Path]) -> None:
 def should_include(path: Path) -> bool:
     relative = path.relative_to(REPO_ROOT)
     if path in OPTIONAL_INCLUDE_PATHS:
+        return path.is_file()
+    if any(
+        optional_path.is_dir() and optional_path in path.parents
+        for optional_path in OPTIONAL_INCLUDE_PATHS
+    ):
         return path.is_file()
     if relative in EXCLUDED_RELATIVE_PATHS:
         return False
