@@ -1,16 +1,33 @@
 # AlphaGateau for Breakthrough
 
-This repository adapts the AlphaGateau idea from chess to the abstract strategy game
-**Breakthrough**. It contains a board-size-invariant GNN, an AlphaZero-style CNN baseline,
-a full self-play training pipeline, cross-board transfer experiments, automated figure
-generation, and the project paper and presentation.
+Does a board-size-invariant graph encoder help AlphaZero-style self-play? This repository adapts
+the AlphaGateau idea from chess to the abstract strategy game **Breakthrough** and tests it
+against a CNN, on 8×8 play and on 5×5 → 8×8 transfer. It contains the JAX environment, both
+models, the self-play training pipeline, the transfer experiments, automated figure generation,
+and the paper and presentation.
+
+McGill COMP 579 team project (three authors, listed in the paper).
+**Paper:** [report/paper.pdf](report/paper.pdf) · **Write-up:**
+[athmanebenarous.com/work/alphagateau-breakthrough](https://athmanebenarous.com/work/alphagateau-breakthrough)
+
+## Results
+
+All win rates are against a greedy evaluator over 12 games, so treat exact percentages as rough.
+
+- **From scratch on 8×8, the CNN wins.** It reaches a 100% win rate by iteration 40; the GNN
+  plateaus near 42%.
+- **5×5 pretraining helps the GNN early.** Its 8×8 win rate at iteration 5 goes from 17% to 67%,
+  but pretraining doesn't close the long-run gap.
+- **Head to head,** the CNN beats the best GNN 7 games to 5.
+
+![8×8 training from scratch: win rate against a greedy evaluator and policy loss over 40 iterations for the CNN, the GNN and the GNN with cosine decay](report/figures/gnn_8x8_scratch_curve.png)
 
 ## Quick start
 
 **No Slurm? Any Linux GPU or notebook works:**
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/Otm02/alphagateau-breakthrough-v2
 cd alphagateau-breakthrough-v2
 pip install -e ".[cuda12]"        # or cuda13, or just . for CPU
 python scripts/show_runtime_info.py
@@ -33,6 +50,11 @@ env, shared team Slurm env).
 src/alphagateau_breakthrough/   Core library (env, graph, models, training, eval, plotting)
 scripts/                        Training CLIs + Slurm submission + mimi wrappers
 slurm/                          sbatch job templates
+tests/                          Unit tests
+notebooks/                      Self-contained demo notebook
+artifacts/                      Per-run configs, metrics and evaluations; head-to-head results
+report/                         Paper source, PDF and figures
+presentation/                   Slides
 ```
 
 ## Key design notes
